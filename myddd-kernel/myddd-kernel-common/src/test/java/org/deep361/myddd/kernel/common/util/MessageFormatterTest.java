@@ -40,4 +40,24 @@ class MessageFormatterTest {
     void should_return_null_for_null_template() {
         assertThat(MessageFormatter.format(null, "A")).isNull();
     }
+
+    @Test
+    void should_not_rescan_arguments_for_placeholders() {
+        assertThat(MessageFormatter.format("a{}b", "{}")).isEqualTo("a{}b");
+    }
+
+    @Test
+    void should_format_consecutive_placeholders() {
+        assertThat(MessageFormatter.format("{}{}", "a", "b")).isEqualTo("ab");
+    }
+
+    @Test
+    void should_leave_opposite_braces_untouched() {
+        assertThat(MessageFormatter.format("a}{b", "x")).isEqualTo("a}{b");
+    }
+
+    @Test
+    void should_return_template_when_argument_array_is_null() {
+        assertThat(MessageFormatter.format("值={}", (Object[]) null)).isEqualTo("值={}");
+    }
 }

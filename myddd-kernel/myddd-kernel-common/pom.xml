@@ -16,6 +16,11 @@
     <name>myddd-kernel-common</name>
     <description>内核通用契约：统一响应、错误码与异常基类、分页模型、traceId 上下文（零三方运行时依赖）</description>
 
+    <properties>
+        <!-- 内核模块：行覆盖率门槛高于默认值 -->
+        <myddd.jacoco.minimum>0.80</myddd.jacoco.minimum>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
@@ -31,28 +36,10 @@
 
     <build>
         <plugins>
+            <!-- 仅激活父 POM pluginManagement 中已配置的 JaCoCo 执行（门槛由 myddd.jacoco.minimum 属性决定） -->
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>check</id>
-                        <configuration>
-                            <rules>
-                                <rule>
-                                    <element>BUNDLE</element>
-                                    <limits>
-                                        <limit>
-                                            <counter>LINE</counter>
-                                            <value>COVEREDRATIO</value>
-                                            <minimum>0.80</minimum>
-                                        </limit>
-                                    </limits>
-                                </rule>
-                            </rules>
-                        </configuration>
-                    </execution>
-                </executions>
             </plugin>
         </plugins>
     </build>

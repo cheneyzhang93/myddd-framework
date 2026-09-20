@@ -62,6 +62,9 @@
         <!-- enforcer requirePluginVersions 会检查生命周期绑定的 site-plugin（缺省 3.12.1），必须显式钉版本，否则连 validate 都失败 -->
         <maven-site-plugin.version>3.22.0</maven-site-plugin.version>
         <jacoco-maven-plugin.version>0.8.15</jacoco-maven-plugin.version>
+
+        <!-- ===== 覆盖率门槛（内核/领域模块在各自 POM 覆盖为 0.80） ===== -->
+        <myddd.jacoco.minimum>0.60</myddd.jacoco.minimum>
     </properties>
 
     <dependencyManagement>
@@ -302,7 +305,7 @@
                                             <limit>
                                                 <counter>LINE</counter>
                                                 <value>COVEREDRATIO</value>
-                                                <minimum>0.60</minimum>
+                                                <minimum>${myddd.jacoco.minimum}</minimum>
                                             </limit>
                                         </limits>
                                     </rule>
