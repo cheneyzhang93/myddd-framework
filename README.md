@@ -6,7 +6,7 @@
 
 | 模块 | 说明 | 状态 |
 |---|---|---|
-| `myddd-dependencies` | 版本唯一真源 BOM（含 devbox 镜像 tag） | 任务 2 交付 |
+| `myddd-dependencies` | 版本唯一真源 BOM（镜像 tag 属性定义在父 POM，供本仓 test-starter 资源过滤消费） | 任务 2 交付 |
 | `myddd-kernel-common` | 统一响应 / 错误码与异常 / 分页模型 / traceId | 任务 3–9 交付 |
 | `myddd-kernel-ddd` | DDD 战术基类（值对象 / 实体 / 聚合根 / 领域事件 / 仓储标记） | 任务 10–14 交付 |
 
@@ -32,3 +32,5 @@ JaCoCo 覆盖率门槛在 verify 阶段强制：内核/领域模块行覆盖 ≥
 - 全部三方依赖版本与 devbox 镜像 tag 定义在根 `pom.xml`（`myddd-parent`）的 properties；
 - 对外 BOM 构件为 `myddd-dependencies`（继承父 POM，业务工程 `import` 即获得全套版本）；
 - BOM 仅用于 `import`（dependencyManagement）方式引用：若把父 POM 当作 `<parent>` 继承，会连同 enforcer 规则与覆盖率门槛一起带进业务构建，不要这样用。
+- 父 POM 耦合：对外 BOM 的 POM 声明了 `<parent>myddd-parent</parent>`，业务工程从仓库解析 BOM 时必须同时能解析到 `myddd-parent`；发布务必包含根聚合 POM（不要只 `-pl myddd-dependencies deploy`），否则业务侧会报 `Non-resolvable parent POM for org.deep361.myddd:myddd-dependencies`。
+- 业务工程不能用重定义属性（如 `<resilience4j.version>`）的方式覆盖受管版本：属性只在本仓内生效，必须在自身 `dependencyManagement` 中重新声明该坐标的版本——工程自身的 DM 条目优先于 `import` 进来的 BOM。

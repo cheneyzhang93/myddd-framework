@@ -65,6 +65,17 @@
 
     <dependencyManagement>
         <dependencies>
+            <!-- ⚠️ 导入顺序有意义：import 冲突时"先声明者胜"。
+                 spring-cloud-dependencies 会传递导入 resilience4j-bom:2.3.0，
+                 故本框架自钉的 resilience4j-bom 必须排在其之前，否则 2.4.0 被静默降级。 -->
+            <dependency>
+                <groupId>io.github.resilience4j</groupId>
+                <artifactId>resilience4j-bom</artifactId>
+                <version>${resilience4j.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
             <!-- 三方 BOM 导入 -->
             <dependency>
                 <groupId>org.springframework.boot</groupId>
@@ -87,14 +98,6 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
-            <dependency>
-                <groupId>io.github.resilience4j</groupId>
-                <artifactId>resilience4j-bom</artifactId>
-                <version>${resilience4j.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-
             <!-- 自钉三方坐标（Boot 4 生态滞后的组件走"厂商 core + 自研装配"） -->
             <dependency>
                 <groupId>com.baomidou</groupId>
