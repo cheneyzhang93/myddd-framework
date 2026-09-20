@@ -1,0 +1,20 @@
+# Maven
+target/
+pom.xml.versionsBackup
+*.versionsBackup
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 本地环境（非提交）
+.jdk21-home
+*.log
+logs/
