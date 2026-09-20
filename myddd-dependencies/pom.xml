@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.deep361.myddd</groupId>
+        <artifactId>myddd-parent</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>myddd-dependencies</artifactId>
+    <packaging>pom</packaging>
+
+    <name>myddd-dependencies</name>
+    <description>myddd 版本唯一真源 BOM：业务工程 import 本 BOM 即获得全套依赖版本（dependencyManagement 继承自 myddd-parent）</description>
+</project>
