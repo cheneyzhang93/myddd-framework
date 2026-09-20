@@ -1,7 +1,8 @@
 # Maven
 target/
-pom.xml.versionsBackup
 *.versionsBackup
+.flattened-pom.xml
+dependency-reduced-pom.xml
 
 # IDE
 .idea/
@@ -9,6 +10,9 @@ pom.xml.versionsBackup
 *.ipr
 *.iws
 .vscode/
+.project
+.classpath
+.settings/
 
 # OS
 .DS_Store

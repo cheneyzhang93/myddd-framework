@@ -14,7 +14,7 @@
 
 ## 环境要求
 
-- **JDK 21**：本机路径记录在 `.jdk21-home`（gitignored）。构建命令：
+- **JDK 21**：本机路径记录在 `.jdk21-home`（gitignored；该文件是机器本地路径记录，由每台开发机自行生成、不入库，CI 通过 `setup-java` 获取 JDK 21，不依赖它）。构建命令：
   `JAVA_HOME="$(cat .jdk21-home)" ./mvnw clean verify`
 - **Docker**：仅集成测试与 devbox 需要（Plan 3 起，见 `myddd-devbox/`）。
 
@@ -24,9 +24,11 @@
 JAVA_HOME="$(cat .jdk21-home)" ./mvnw -B -ntp clean verify
 ```
 
-JaCoCo 覆盖率门槛在 `verify` 阶段强制：内核/领域模块行覆盖 ≥80%，其余 ≥60%。
+JaCoCo 覆盖率门槛在 verify 阶段强制：内核/领域模块行覆盖 ≥80%，其余 ≥60%。注意：未产生测试执行数据的模块 JaCoCo 会跳过检查，CI 会额外断言覆盖率产物存在（见工作流）。
+发布私服时使用 `-Prelease` profile（默认 opt-in，不启用）：额外产出 sources / javadoc 构件随主构件发布。
 
 ## 版本真源
 
 - 全部三方依赖版本与 devbox 镜像 tag 定义在根 `pom.xml`（`myddd-parent`）的 properties；
-- 对外 BOM 构件为 `myddd-dependencies`（继承父 POM，业务工程 `import` 即获得全套版本）。
+- 对外 BOM 构件为 `myddd-dependencies`（继承父 POM，业务工程 `import` 即获得全套版本）；
+- BOM 仅用于 `import`（dependencyManagement）方式引用：若把父 POM 当作 `<parent>` 继承，会连同 enforcer 规则与覆盖率门槛一起带进业务构建，不要这样用。

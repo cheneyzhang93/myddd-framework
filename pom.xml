@@ -17,9 +17,7 @@
     </modules>
 
     <properties>
-        <java.version>21</java.version>
         <maven.compiler.release>21</maven.compiler.release>
-        <maven.compiler.parameters>true</maven.compiler.parameters>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <project.build.outputTimestamp>2026-09-20T00:00:00Z</project.build.outputTimestamp>
@@ -59,7 +57,7 @@
         <maven-javadoc-plugin.version>3.12.0</maven-javadoc-plugin.version>
         <maven-enforcer-plugin.version>3.6.3</maven-enforcer-plugin.version>
         <maven-wrapper-plugin.version>3.3.4</maven-wrapper-plugin.version>
-        <!-- pom packaging 默认把 site:attach-descriptor 绑到 package 阶段，需显式钉版本以通过 requirePluginVersions -->
+        <!-- enforcer requirePluginVersions 会检查生命周期绑定的 site-plugin（缺省 3.12.1），必须显式钉版本，否则连 validate 都失败 -->
         <maven-site-plugin.version>3.22.0</maven-site-plugin.version>
         <jacoco-maven-plugin.version>0.8.15</jacoco-maven-plugin.version>
     </properties>
@@ -117,6 +115,8 @@
                 <artifactId>sa-token-redis-template</artifactId>
                 <version>${sa-token.version}</version>
             </dependency>
+            <!-- 注意：SCA 2025.1.0.0 将 rocketmq 家族管理为 5.3.1，此处仅单点升 client 到 5.5.1；
+                 引入 SCA 的 RocketMQ starter 时需同步钉住 org.apache.rocketmq:* 全家族，避免 ACL/客户端小版本错配 -->
             <dependency>
                 <groupId>org.apache.rocketmq</groupId>
                 <artifactId>rocketmq-client</artifactId>
@@ -241,7 +241,7 @@
                             <configuration>
                                 <rules>
                                     <requireMavenVersion>
-                                        <version>[3.9.0,)</version>
+                                        <version>[3.9.0,4.0.0)</version>
                                     </requireMavenVersion>
                                     <requireJavaVersion>
                                         <version>[21,)</version>
