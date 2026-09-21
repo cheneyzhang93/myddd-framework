@@ -44,6 +44,7 @@ class MessageFormatterTest {
     @Test
     void should_not_rescan_arguments_for_placeholders() {
         assertThat(MessageFormatter.format("a{}b", "{}")).isEqualTo("a{}b");
+        assertThat(MessageFormatter.format("a{}b", "{}", "x")).isEqualTo("a{}b");
     }
 
     @Test
@@ -54,6 +55,7 @@ class MessageFormatterTest {
     @Test
     void should_leave_opposite_braces_untouched() {
         assertThat(MessageFormatter.format("a}{b", "x")).isEqualTo("a}{b");
+        assertThat(MessageFormatter.format("a{x}b", "v")).isEqualTo("a{x}b");
     }
 
     @Test
