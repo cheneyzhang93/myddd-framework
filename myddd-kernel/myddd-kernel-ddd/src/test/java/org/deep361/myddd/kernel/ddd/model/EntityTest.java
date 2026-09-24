@@ -2,6 +2,9 @@ package org.deep361.myddd.kernel.ddd.model;
 
 import org.junit.jupiter.api.Test;
 
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -75,5 +78,12 @@ class EntityTest {
         assertThatThrownBy(() -> new Order(null))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("实体 id 不能为 null");
+    }
+
+    @Test
+    void equals_hash_code_and_get_id_should_be_final() throws NoSuchMethodException {
+        assertThat(Modifier.isFinal(Entity.class.getDeclaredMethod("equals", Object.class).getModifiers())).isTrue();
+        assertThat(Modifier.isFinal(Entity.class.getDeclaredMethod("hashCode").getModifiers())).isTrue();
+        assertThat(Modifier.isFinal(Entity.class.getDeclaredMethod("getId").getModifiers())).isTrue();
     }
 }
