@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>org.deep361.myddd.smoke</groupId>
+    <artifactId>bom-smoke</artifactId>
+    <version>9.9.9</version>
+    <packaging>pom</packaging>
+
+    <description>BOM 消费端契约回归夹具：版本号刻意与框架发布版本不同（9.9.9），用于证明 import BOM 后 myddd-* 版本不串味</description>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.deep361.myddd</groupId>
+                <artifactId>myddd-dependencies</artifactId>
+                <version>1.0.0-SNAPSHOT</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+        <!-- 直接自钉坐标：验证父 POM 的显式 version 生效 -->
+        <dependency>
+            <groupId>org.redisson</groupId>
+            <artifactId>redisson</artifactId>
+        </dependency>
+        <!-- 自钉 BOM import：验证 import 顺序陷阱（spring-cloud 传递导入 2.3.0，必须由 2.4.0 胜出） -->
+        <dependency>
+            <groupId>io.github.resilience4j</groupId>
+            <artifactId>resilience4j-circuitbreaker</artifactId>
+        </dependency>
+        <!-- SCA 传递导入把 rocketmq 家族管理为 5.3.1，父 POM 单点显式升 client 到 5.5.1：验证"单点显式版本覆盖传递导入"生效 -->
+        <dependency>
+            <groupId>org.apache.rocketmq</groupId>
+            <artifactId>rocketmq-client</artifactId>
+        </dependency>
+        <!-- 传递 import 的传递坐标：验证"import 一次拿到全套版本" -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <!-- 本项目模块：验证 ${project.version} 不串味（必须为 1.0.0-SNAPSHOT，而非夹具的 9.9.9） -->
+        <dependency>
+            <groupId>org.deep361.myddd</groupId>
+            <artifactId>myddd-kernel-common</artifactId>
+        </dependency>
+    </dependencies>
+</project>
