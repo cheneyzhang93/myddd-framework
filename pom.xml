@@ -16,6 +16,7 @@
         <!-- 各模块目录在其创建任务中逐个追加（Maven 对不存在的模块目录直接报错） -->
         <module>myddd-dependencies</module>
         <module>myddd-kernel/myddd-kernel-common</module>
+        <module>myddd-kernel/myddd-kernel-ddd</module>
     </modules>
 
     <properties>
