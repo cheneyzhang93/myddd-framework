@@ -78,6 +78,16 @@ class BizExceptionTest {
     }
 
     @Test
+    void should_treat_bare_null_as_no_args() {
+        // 文档化的 varargs 陷阱：bare null 是"传 null 数组"即无参数（javac 会给出 non-varargs 调用警告，
+        // 此处刻意保留该写法，使 javadoc 的声明可被测试执行）；渲染一个 null 参数须写 (Object) null。
+        BizException exception = new BizException(CommonErrorCode.ARGUMENT_INVALID, null);
+
+        assertThat(exception.getMessage()).isEqualTo("参数 {} 不合法");
+        assertThat(exception.getMessageArgs()).isEmpty();
+    }
+
+    @Test
     void should_defensively_copy_args_on_getter() {
         BizException exception = new BizException(CommonErrorCode.ARGUMENT_INVALID, "A");
 

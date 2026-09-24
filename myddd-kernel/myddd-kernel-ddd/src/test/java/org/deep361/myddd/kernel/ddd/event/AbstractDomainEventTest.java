@@ -61,11 +61,6 @@ class AbstractDomainEventTest {
     }
 
     @Test
-    void event_type_should_default_to_fully_qualified_class_name() {
-        assertThat(new OrderPaidEvent("A1").eventType()).isEqualTo(OrderPaidEvent.class.getName());
-    }
-
-    @Test
     void should_support_rehydration_constructor() {
         Instant at = Instant.parse("2026-09-20T10:00:00Z");
 

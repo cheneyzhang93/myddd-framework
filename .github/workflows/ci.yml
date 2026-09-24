@@ -34,8 +34,12 @@ jobs:
           missing=0
           while IFS= read -r pom; do
             grep -q '<packaging>pom</packaging>' "$pom" && continue
-            grep -q 'jacoco-maven-plugin' "$pom" || continue
             module_dir="$(dirname "$pom")"
+            if ! grep -q 'jacoco-maven-plugin' "$pom"; then
+              echo "::error::模块 $module_dir 为 jar 打包但未激活 JaCoCo（父 POM 只在 pluginManagement 中声明，模块须在 <build><plugins> 中显式激活），覆盖率门槛会静默失效"
+              missing=1
+              continue
+            fi
             if [ ! -s "$module_dir/target/site/jacoco/jacoco.csv" ]; then
               echo "::error::模块 $module_dir 声明了 JaCoCo 却未产出覆盖率数据（测试缺失或未执行）"
               missing=1

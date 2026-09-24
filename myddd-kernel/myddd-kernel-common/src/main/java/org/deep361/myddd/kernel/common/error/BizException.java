@@ -39,9 +39,10 @@ public class BizException extends RuntimeException {
      * 占位符会原样保留在 {@link #getMessage()} 中（属刻意的宽松行为，与 {@link ErrorCode} 的约定一致）：
      * 调用方必须补齐参数，否则用户将看到形如 {@code 参数 {} 不合法} 的文案。
      *
-     * <p>因是可变参数，{@code new BizException(code, null)} 传入的是一个 {@code null} 元素、而非无参数，该元素会作为
-     * 真实参数参与渲染（{@code null} 以字面量写入文案，如 {@code 参数 null 不合法}）；确需无参数时请只传
-     * {@code errorCode}，或显式传入 {@code (Object[]) null}。
+     * <p><b>varargs 陷阱</b>：{@code new BizException(code, null)} 会被编译器当作"传入 null 数组"即<b>无参数</b>
+     * （javac 会给出 non-varargs 调用警告），渲染结果保留 {@code {}}、{@link #getMessageArgs()} 返回空数组；
+     * 要渲染一个 {@code null} 参数请写 {@code new BizException(code, (Object) null)}（渲染为
+     * {@code 参数 null 不合法}）。确需无参数时请只传 {@code errorCode}，或显式传入 {@code (Object[]) null}。
      *
      * @param errorCode   错误码，不可为 {@code null}
      * @param messageArgs 渲染兜底文案的占位符参数，可为空；内部防御性拷贝

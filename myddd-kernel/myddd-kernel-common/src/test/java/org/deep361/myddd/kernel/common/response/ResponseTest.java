@@ -132,4 +132,12 @@ class ResponseTest {
 
         assertThat(response.message()).isEqualTo("参数 null 不合法");
     }
+
+    @Test
+    void fail_should_treat_bare_null_as_no_args() {
+        // 同上：bare null 属"传 null 数组"即无参数，javadoc 的 varargs 陷阱段落由此用例兜底。
+        Response<Void> response = Response.fail(CommonErrorCode.ARGUMENT_INVALID, null);
+
+        assertThat(response.message()).isEqualTo("参数 {} 不合法");
+    }
 }

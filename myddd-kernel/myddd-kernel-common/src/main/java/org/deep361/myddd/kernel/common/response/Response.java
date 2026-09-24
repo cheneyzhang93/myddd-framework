@@ -54,7 +54,8 @@ public record Response<T>(String code, String message, T data, String traceId) {
      *
      * <p>{@code messageArgs} 的规则与
      * {@link org.deep361.myddd.kernel.common.error.BizException BizException} 一致：
-     * <b>不得包含</b> {@link Throwable}，否则会被当作文案素材渲染、把实现细节透出给终端用户；
+     * <b>不得包含</b> {@link Throwable}——构造时即抛 {@link IllegalArgumentException} 拒绝，避免异常细节
+     * 经文案渲染透出给终端用户；
      * 含 {@code {}} 占位符的错误码必须补齐参数，漏传时占位符会原样留在用户可见文案中。
      *
      * <p><b>varargs 陷阱</b>：{@code fail(code, null)} 会被编译器当作"传入 null 数组"即<b>无参数</b>
