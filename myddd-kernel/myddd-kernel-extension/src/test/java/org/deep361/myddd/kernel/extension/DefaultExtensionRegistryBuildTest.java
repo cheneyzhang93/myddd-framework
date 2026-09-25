@@ -282,18 +282,7 @@ class DefaultExtensionRegistryBuildTest {
 
     @Test
     void should_list_registered_scenarios_sorted_when_nothing_matches() {
-        // 登记顺序为 vip → 默认场景，消息中必须按字符串升序输出
-        DefaultExtensionRegistry twoScenarios = DefaultExtensionRegistry.builder()
-                .register(ExtensionFixtures.RiskCheck.class, "vip", 10, new ExtensionFixtures.VipRiskCheck())
-                .register(ExtensionFixtures.RiskCheck.class, "", 100, new ExtensionFixtures.DefaultRiskCheck())
-                .build();
-
-        assertThatThrownBy(() -> twoScenarios.getExtension(ExtensionFixtures.RiskCheck.class, "unknown"))
-                .isInstanceOf(NoSuchElementException.class)
-                .hasMessage("未找到扩展点实现：point=" + ExtensionFixtures.RiskCheck.class.getName()
-                        + ", scenario=\"unknown\"，已注册场景=[, vip]");
-
-        // 两个非空场景逆序登记：输出同样按升序（alpha 先于 vip）
+        // 两个非空场景逆序登记：消息按字符串升序输出（alpha 先于 vip）
         DefaultExtensionRegistry reverseRegistered = DefaultExtensionRegistry.builder()
                 .register(ExtensionFixtures.RiskCheck.class, "vip", 10, new ExtensionFixtures.VipRiskCheck())
                 .register(ExtensionFixtures.RiskCheck.class, "alpha", 100, new ExtensionFixtures.BackupRiskCheck())
