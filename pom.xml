@@ -17,6 +17,7 @@
         <module>myddd-dependencies</module>
         <module>myddd-kernel/myddd-kernel-common</module>
         <module>myddd-kernel/myddd-kernel-ddd</module>
+        <module>myddd-domain-starter</module>
         <module>myddd-kernel/myddd-kernel-port</module>
         <module>myddd-kernel/myddd-kernel-extension</module>
         <module>myddd-kernel/myddd-kernel-statemachine</module>

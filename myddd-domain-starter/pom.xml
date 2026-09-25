@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.deep361.myddd</groupId>
+        <artifactId>myddd-parent</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>myddd-domain-starter</artifactId>
+
+    <name>myddd-domain-starter</name>
+    <description>领域装配 Starter：@Domain 模块发现、进程内领域事件分发与 Outbox 可靠投递（依赖即启用、冲突即快速失败、配置错即启动失败）</description>
+
+    <dependencies>
+        <!-- 内核契约全部声明：本模块是 starter，装配内核能力（事件/扩展点/规则/端口），一次声明齐全避免后续任务反复改 POM -->
+        <dependency>
+            <groupId>org.deep361.myddd</groupId>
+            <artifactId>myddd-kernel-common</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.deep361.myddd</groupId>
+            <artifactId>myddd-kernel-ddd</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.deep361.myddd</groupId>
+            <artifactId>myddd-kernel-port</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.deep361.myddd</groupId>
+            <artifactId>myddd-kernel-extension</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.deep361.myddd</groupId>
+            <artifactId>myddd-kernel-rule</artifactId>
+        </dependency>
+
+        <!-- Spring 装配面（版本由 spring-boot-dependencies 管理，勿写版本号） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-autoconfigure</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-context</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-tx</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>tools.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+
+        <!-- 测试 -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- 仅激活：executions/configuration 全部继承父 POM（门槛值走父 POM 的 0.60） -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>
