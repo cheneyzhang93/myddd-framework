@@ -42,6 +42,25 @@ class OutboxBackoffTest {
     }
 
     @Test
+    void should_clamp_truncated_delay_to_one_nanosecond() {
+        OutboxBackoff backoff = OutboxBackoff.exponential(Duration.ofNanos(3), 1.0, Duration.ofMinutes(1),
+                0.9, () -> 0.9);
+
+        // 3ns × (1 − 0.9×0.9) = 0.57ns，整除截断为 0：结果必须下钳到 1ns
+        assertThat(backoff.nextDelay(1)).isEqualTo(Duration.ofNanos(1)).isPositive();
+    }
+
+    @Test
+    void should_not_shrink_when_random_source_returns_zero() {
+        OutboxBackoff backoff = OutboxBackoff.exponential(Duration.ofSeconds(1), 2.0, Duration.ofMinutes(1),
+                0.2, () -> 0.0);
+
+        // 抖动因子 = 1 − 0.2×0 = 1：随机源取 0 时不产生任何缩减
+        assertThat(backoff.nextDelay(1)).isEqualTo(Duration.ofSeconds(1));
+        assertThat(backoff.nextDelay(2)).isEqualTo(Duration.ofSeconds(2));
+    }
+
+    @Test
     void should_support_fixed_interval() {
         OutboxBackoff backoff = OutboxBackoff.fixed(Duration.ofSeconds(3));
 

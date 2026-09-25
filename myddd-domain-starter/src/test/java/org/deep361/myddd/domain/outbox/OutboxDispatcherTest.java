@@ -1,6 +1,7 @@
 package org.deep361.myddd.domain.outbox;
 
 import org.deep361.myddd.kernel.port.message.MessageHeaderNames;
+import org.deep361.myddd.kernel.port.message.MessagePort;
 import org.deep361.myddd.kernel.port.message.OutboundMessage;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -8,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -230,6 +232,117 @@ class OutboxDispatcherTest {
                 .isInstanceOf(NullPointerException.class).hasMessage("OutboxDispatchOptions 不能为 null");
         assertThatThrownBy(() -> new OutboxDispatcher(port, store, backoff, options, null))
                 .isInstanceOf(NullPointerException.class).hasMessage("Clock 不能为 null");
+    }
+
+    @Test
+    void should_claim_with_lease_until_now_plus_lease_duration() {
+        AtomicReference<Instant> nowSeen = new AtomicReference<>();
+        AtomicReference<Instant> leaseUntilSeen = new AtomicReference<>();
+        OutboxStore capturingStore = new OutboxStore() {
+            @Override
+            public void save(OutboxRecord record) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public List<OutboxRecord> claimDispatchable(Instant now, Instant leaseUntil, int limit) {
+                nowSeen.set(now);
+                leaseUntilSeen.set(leaseUntil);
+                return List.of();
+            }
+
+            @Override
+            public void update(OutboxRecord record) {
+                throw new UnsupportedOperationException();
+            }
+        };
+        OutboxDispatcher dispatcher = new OutboxDispatcher(port, capturingStore,
+                OutboxBackoff.fixed(Duration.ofSeconds(5)),
+                new OutboxDispatchOptions(5, 50, Duration.ofSeconds(30)), clock);
+
+        dispatcher.dispatchOnce();
+
+        assertThat(nowSeen.get()).isEqualTo(T0);
+        assertThat(leaseUntilSeen.get()).isEqualTo(T0.plusSeconds(30));
+    }
+
+    @Test
+    void should_claim_only_batch_size_records_per_round() {
+        savedRecord("e-1", T0);
+        savedRecord("e-2", T0);
+        OutboxDispatcher dispatcher = new OutboxDispatcher(port, store, OutboxBackoff.fixed(Duration.ofSeconds(5)),
+                new OutboxDispatchOptions(5, 1, Duration.ofSeconds(30)), clock);
+
+        OutboxDispatcher.DispatchResult first = dispatcher.dispatchOnce();
+
+        assertThat(first.claimed()).isEqualTo(1);
+        assertThat(first.dispatched()).isEqualTo(1);
+        assertThat(port.sent()).hasSize(1);
+
+        OutboxDispatcher.DispatchResult second = dispatcher.dispatchOnce();
+
+        assertThat(second.claimed()).isEqualTo(1);
+        assertThat(port.sent()).extracting(OutboundMessage::payload)
+                .containsExactly("{\"eventId\":\"e-1\"}", "{\"eventId\":\"e-2\"}");
+    }
+
+    @Test
+    void should_grow_backoff_with_failure_attempt_count() {
+        savedRecord("e-1", T0);
+        port.failNext(Integer.MAX_VALUE);
+        OutboxDispatcher dispatcher = new OutboxDispatcher(port, store,
+                OutboxBackoff.exponential(Duration.ofSeconds(1), 2.0, Duration.ofMinutes(10), 0.0, () -> 0.0),
+                new OutboxDispatchOptions(3, 10, Duration.ofSeconds(30)), clock);
+
+        dispatcher.dispatchOnce();
+        assertThat(store.committedRecords().get(0).nextRetryAt()).isEqualTo(T0.plusSeconds(1));
+
+        clock.advance(Duration.ofSeconds(2));
+        dispatcher.dispatchOnce();
+
+        OutboxRecord record = store.committedRecords().get(0);
+        assertThat(record.retryCount()).isEqualTo(2);
+        assertThat(record.nextRetryAt()).isEqualTo(T0.plusSeconds(4));
+    }
+
+    @Test
+    void should_prefix_last_error_with_exception_class_name() {
+        MessagePort boomPort = message -> {
+            throw new RuntimeException("boom");
+        };
+        savedRecord("e-1", T0);
+        OutboxDispatcher dispatcher = new OutboxDispatcher(boomPort, store,
+                OutboxBackoff.fixed(Duration.ofSeconds(5)),
+                new OutboxDispatchOptions(3, 10, Duration.ofSeconds(30)), clock);
+
+        dispatcher.dispatchOnce();
+
+        assertThat(store.committedRecords().get(0).lastError()).startsWith("java.lang.RuntimeException：boom");
+    }
+
+    @Test
+    void should_describe_blank_failure_message_as_class_name_only() {
+        savedRecord("e-1", T0);
+        port.failureMessage("   ");
+        port.failNext(1);
+
+        dispatcher(3).dispatchOnce();
+
+        assertThat(store.committedRecords().get(0).lastError()).isEqualTo("java.lang.IllegalStateException");
+    }
+
+    @Test
+    void should_truncate_error_to_first_500_characters_of_full_description() {
+        savedRecord("e-1", T0);
+        String fullDescription = "java.lang.IllegalStateException：" + "x".repeat(600);
+        port.failureMessage("x".repeat(600));
+        port.failNext(1);
+
+        dispatcher(3).dispatchOnce();
+
+        assertThat(store.committedRecords().get(0).lastError())
+                .hasSize(500)
+                .isEqualTo(fullDescription.substring(0, 500));
     }
 
     private OutboxDispatcher dispatcher(int maxAttempts) {

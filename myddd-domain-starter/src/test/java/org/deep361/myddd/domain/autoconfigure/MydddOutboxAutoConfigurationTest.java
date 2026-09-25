@@ -2,6 +2,7 @@ package org.deep361.myddd.domain.autoconfigure;
 
 import org.deep361.myddd.domain.event.EventTestSupport;
 import org.deep361.myddd.domain.event.fixture.EventFixtures;
+import org.deep361.myddd.domain.outbox.CountingOutboxStore;
 import org.deep361.myddd.domain.outbox.JacksonOutboxPayloadSerializer;
 import org.deep361.myddd.domain.outbox.OutboxBackoff;
 import org.deep361.myddd.domain.outbox.OutboxChannelResolver;
@@ -9,6 +10,7 @@ import org.deep361.myddd.domain.outbox.OutboxDispatchLoop;
 import org.deep361.myddd.domain.outbox.OutboxDispatcher;
 import org.deep361.myddd.domain.outbox.OutboxDispatchOptions;
 import org.deep361.myddd.domain.outbox.OutboxPayloadSerializer;
+import org.deep361.myddd.domain.outbox.OutboxRecord;
 import org.deep361.myddd.domain.outbox.OutboxRecorder;
 import org.deep361.myddd.domain.outbox.OutboxStatus;
 import org.deep361.myddd.domain.outbox.OutboxStore;
@@ -18,14 +20,21 @@ import org.deep361.myddd.kernel.ddd.event.DomainEvent;
 import org.deep361.myddd.kernel.ddd.event.DomainEventPublisher;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneOffset;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class MydddOutboxAutoConfigurationTest {
 
@@ -197,6 +206,171 @@ class MydddOutboxAutoConfigurationTest {
                     assertThat(context).hasNotFailed();
                     assertThat(context.getBean(OutboxDispatcher.class)).isSameAs(customDispatcher);
                 });
+    }
+
+    @Test
+    void should_report_missing_store_before_missing_message_port_in_dispatcher_factory() {
+        MydddOutboxAutoConfiguration configuration = new MydddOutboxAutoConfiguration();
+        OutboxBackoff backoff = OutboxBackoff.fixed(Duration.ofSeconds(1));
+
+        assertThatThrownBy(() -> configuration.outboxDispatcher(emptyProvider(), emptyProvider(), backoff,
+                new MydddOutboxProperties(), Clock.systemUTC()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("但上下文中没有 OutboxStore bean");
+
+        MydddOutboxProperties invalid = new MydddOutboxProperties();
+        invalid.setBatchSize(0);
+        assertThatThrownBy(() -> configuration.outboxDispatcher(emptyProvider(), emptyProvider(), backoff,
+                invalid, Clock.systemUTC()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("myddd.domain.outbox.batch-size");
+    }
+
+    @Test
+    void should_keep_application_provided_clock_bean() {
+        Clock appClock = Clock.fixed(Instant.parse("2026-09-25T07:00:00Z"), ZoneOffset.UTC);
+
+        runner.withPropertyValues("myddd.domain.outbox.enabled=true", "myddd.domain.outbox.poll-interval=1h")
+                .withBean(Clock.class, () -> appClock)
+                .withBean(TransactionAwareInMemoryOutboxStore.class)
+                .withBean(RecordingMessagePort.class)
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+                    assertThat(context.getBean(Clock.class)).isSameAs(appClock);
+                });
+    }
+
+    @Test
+    void should_register_utc_clock_by_default() {
+        runner.withPropertyValues("myddd.domain.outbox.enabled=true", "myddd.domain.outbox.poll-interval=1h")
+                .withBean(TransactionAwareInMemoryOutboxStore.class)
+                .withBean(RecordingMessagePort.class)
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+                    assertThat(context.getBean(Clock.class).getZone()).isEqualTo(ZoneOffset.UTC);
+                });
+    }
+
+    @Test
+    void should_keep_application_provided_backoff_bean() {
+        OutboxBackoff appBackoff = OutboxBackoff.fixed(Duration.ofSeconds(7));
+
+        runner.withPropertyValues("myddd.domain.outbox.enabled=true", "myddd.domain.outbox.poll-interval=1h")
+                .withBean(OutboxBackoff.class, () -> appBackoff)
+                .withBean(TransactionAwareInMemoryOutboxStore.class)
+                .withBean(RecordingMessagePort.class)
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+                    assertThat(context.getBean(OutboxBackoff.class)).isSameAs(appBackoff);
+                });
+    }
+
+    @Test
+    void should_keep_application_provided_dispatch_loop_bean() {
+        OutboxDispatcher appDispatcher = new OutboxDispatcher(new RecordingMessagePort(),
+                new TransactionAwareInMemoryOutboxStore(), OutboxBackoff.fixed(Duration.ofSeconds(5)),
+                OutboxDispatchOptions.defaults(), Clock.systemUTC());
+        OutboxDispatchLoop appLoop = new OutboxDispatchLoop(appDispatcher, Duration.ofHours(1), Duration.ofSeconds(1));
+
+        runner.withPropertyValues("myddd.domain.outbox.enabled=true", "myddd.domain.outbox.poll-interval=1h")
+                .withBean(TransactionAwareInMemoryOutboxStore.class)
+                .withBean(RecordingMessagePort.class)
+                .withBean(OutboxDispatchLoop.class, () -> appLoop)
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+                    Map<String, OutboxDispatchLoop> loops = context.getBeansOfType(OutboxDispatchLoop.class);
+                    assertThat(loops).hasSize(1);
+                    assertThat(loops.values().iterator().next()).isSameAs(appLoop);
+                    appLoop.stop();
+                });
+    }
+
+    @Test
+    void should_bind_max_attempts_and_batch_size_without_crossing() {
+        runner.withPropertyValues("myddd.domain.outbox.enabled=true", "myddd.domain.outbox.poll-interval=1h",
+                        "myddd.domain.outbox.max-attempts=2", "myddd.domain.outbox.batch-size=3")
+                .withBean(TransactionAwareInMemoryOutboxStore.class)
+                .withBean(RecordingMessagePort.class)
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+                    TransactionAwareInMemoryOutboxStore store = context.getBean(TransactionAwareInMemoryOutboxStore.class);
+                    for (int i = 1; i <= 5; i++) {
+                        store.save(pendingRecord("e-" + i));
+                    }
+
+                    OutboxDispatcher.DispatchResult result = context.getBean(OutboxDispatcher.class).dispatchOnce();
+
+                    assertThat(result.claimed()).isEqualTo(3);
+                    assertThat(context.getBean(RecordingMessagePort.class).sent()).hasSize(3);
+                });
+    }
+
+    @Test
+    void should_generate_varying_jitter_from_random_source() {
+        runner.withPropertyValues("myddd.domain.outbox.enabled=true", "myddd.domain.outbox.poll-interval=1h",
+                        "myddd.domain.outbox.backoff.jitter-ratio=0.5")
+                .withBean(TransactionAwareInMemoryOutboxStore.class)
+                .withBean(RecordingMessagePort.class)
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+                    OutboxBackoff backoff = context.getBean(OutboxBackoff.class);
+                    Set<Duration> delays = new HashSet<>();
+                    for (int i = 0; i < 200; i++) {
+                        delays.add(backoff.nextDelay(1));
+                    }
+
+                    assertThat(delays).hasSizeGreaterThan(1);
+                });
+    }
+
+    @Test
+    void should_apply_configured_poll_interval_to_the_loop() throws InterruptedException {
+        CountingOutboxStore store = new CountingOutboxStore();
+
+        runner.withPropertyValues("myddd.domain.outbox.enabled=true", "myddd.domain.outbox.poll-interval=25ms")
+                .withBean(OutboxStore.class, () -> store)
+                .withBean(RecordingMessagePort.class)
+                .run(context -> {
+                    assertThat(context).hasNotFailed();
+                    long deadline = System.nanoTime() + Duration.ofSeconds(2).toNanos();
+                    while (store.claimCalls() < 8 && System.nanoTime() < deadline) {
+                        Thread.sleep(5);
+                    }
+
+                    assertThat(store.claimCalls())
+                            .as("pollInterval=25ms 未生效：2s 内只取件 %d 次", store.claimCalls())
+                            .isGreaterThanOrEqualTo(8);
+                });
+    }
+
+    private static OutboxRecord pendingRecord(String eventId) {
+        Instant createdAt = Instant.parse("2026-09-25T00:00:00Z");
+        return OutboxRecord.pending(eventId, "org.example.OrderPaidEvent", "org.example.order.Order", "o-1",
+                createdAt, null, "order-events", "{}", createdAt);
+    }
+
+    private static <T> ObjectProvider<T> emptyProvider() {
+        return new ObjectProvider<>() {
+            @Override
+            public T getObject() {
+                throw new NoSuchElementException();
+            }
+
+            @Override
+            public T getObject(Object... args) {
+                throw new NoSuchElementException();
+            }
+
+            @Override
+            public T getIfAvailable() {
+                return null;
+            }
+
+            @Override
+            public T getIfUnique() {
+                return null;
+            }
+        };
     }
 
     /** 委派给框架默认实现的替代序列化器（{@link OutboxPayloadSerializer} 有两个方法，不能用 lambda）。 */
