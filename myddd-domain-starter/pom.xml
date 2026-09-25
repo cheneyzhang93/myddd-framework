@@ -60,6 +60,11 @@
             <groupId>tools.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
         </dependency>
+        <!-- 事件分发日志（失败隔离语义要求把监听器异常记 ERROR，不能静默吞掉） -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
 
         <!-- 测试 -->
         <dependency>

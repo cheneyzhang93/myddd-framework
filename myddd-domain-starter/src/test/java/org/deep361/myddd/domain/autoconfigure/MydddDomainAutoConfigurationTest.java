@@ -108,7 +108,9 @@ class MydddDomainAutoConfigurationTest {
                     .toList();
         }
 
-        assertThat(declared).containsExactly(MydddDomainAutoConfiguration.class.getName());
+        assertThat(declared).containsExactly(
+                MydddDomainAutoConfiguration.class.getName(),
+                MydddDomainEventAutoConfiguration.class.getName());
     }
 
     @Test
