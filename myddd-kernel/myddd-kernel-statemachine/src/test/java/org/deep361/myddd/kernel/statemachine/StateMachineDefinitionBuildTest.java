@@ -106,6 +106,8 @@ class StateMachineDefinitionBuildTest {
 
         assertThat(definition.targetState(CREATED, PAY)).isEqualTo(CREATED);
         assertThat(definition.eventsFrom(CREATED)).containsExactly(PAY, CLOSE);
+        assertThat(definition.transition(CREATED, PAY).orElseThrow().guard()
+                .allow(new TransitionContext<>(CREATED, PAY, CREATED))).isTrue();
     }
 
     @Test
