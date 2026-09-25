@@ -21,6 +21,7 @@ import java.util.TreeSet;
  */
 public final class DefaultExtensionRegistry implements ExtensionRegistry {
 
+    /** 默认场景标识：非空场景无精确匹配时的兜底登记场景（兜底路径唯一真源，见 {@link #candidates}）。 */
     private static final String DEFAULT_SCENARIO = "";
 
     /** 每个扩展点 → 场景 → 已按优先级排序的登记项。 */
@@ -54,12 +55,9 @@ public final class DefaultExtensionRegistry implements ExtensionRegistry {
     public <T> List<T> getExtensionList(Class<T> point, String scenario) {
         requireExtensionPoint(point);
         Objects.requireNonNull(scenario, "scenario 不能为 null，默认场景请传空字符串");
-        Map<String, List<Registered>> byScenario = byPoint.get(point);
-        if (byScenario == null) {
-            return List.of();
-        }
-        List<Registered> registered = byScenario.getOrDefault(scenario, List.of());
-        return registered.stream().map(extension -> point.cast(extension.instance())).toList();
+        return candidates(point, scenario).stream()
+                .map(extension -> point.cast(extension.instance()))
+                .toList();
     }
 
     @Override
@@ -100,6 +98,22 @@ public final class DefaultExtensionRegistry implements ExtensionRegistry {
     public int size() {
         return byPoint.values().stream().mapToInt(byScenario -> byScenario.values().stream()
                 .mapToInt(List::size).sum()).sum();
+    }
+
+    /**
+     * 候选匹配算法（语义固定，勿改）：精确场景优先；精确场景无实现时退化为默认场景（{@code ""}）实现；
+     * 请求默认场景时不做兜底。返回列表已按优先级升序（构建期排序 + 同优先级冲突拒绝）。
+     */
+    private List<Registered> candidates(Class<?> point, String scenario) {
+        Map<String, List<Registered>> byScenario = byPoint.get(point);
+        if (byScenario == null) {
+            return List.of();
+        }
+        List<Registered> matched = byScenario.get(scenario);
+        if (matched == null && !DEFAULT_SCENARIO.equals(scenario)) {
+            matched = byScenario.get(DEFAULT_SCENARIO);
+        }
+        return matched == null ? List.of() : matched;
     }
 
     private Set<String> registeredScenarios(Class<?> point) {

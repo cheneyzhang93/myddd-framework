@@ -27,9 +27,10 @@ class ExtensionRegistryContractTest {
                         "size()");
     }
 
-    /** 签名取"方法名 + 参数类型简单名"：同名不同参的重载（getExtensionList）也能区分。 */
+    /** 签名取"default 前缀（仅当方法为 default）+ 方法名 + 参数类型简单名"：重载与抽象→default 的修饰符变化都能区分。 */
     private static String signature(Method method) {
-        return method.getName() + "(" + Arrays.stream(method.getParameterTypes())
+        String modifier = method.isDefault() ? "default " : "";
+        return modifier + method.getName() + "(" + Arrays.stream(method.getParameterTypes())
                 .map(Class::getSimpleName)
                 .collect(Collectors.joining(", ")) + ")";
     }

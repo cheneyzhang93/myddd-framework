@@ -14,8 +14,6 @@ import java.lang.annotation.Target;
  *
  * <p><b>优先级语义</b>：{@link #priority()} 数值越小越优先；同一扩展点同一场景下必须能决出唯一实现，
  * 出现同优先级的多份实现属配置冲突，构建注册表时立即失败（宁可启动报错，不要线上随机路由）。
- *
- * @implNote 当前注册表只做精确场景匹配；{@link #scenario()} 留空所声明的"默认实现"兜底语义由后续的场景解析步骤交付。
  */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
@@ -26,9 +24,7 @@ public @interface Extension {
     Class<?> point() default void.class;
 
     /**
-     * 场景标识（业务身份，如 {@code "vip"}）；留空表示默认实现。
-     *
-     * @implNote 当前按精确场景匹配：留空只会登记到默认场景（{@code ""}），兜底语义由后续的场景解析步骤交付。
+     * 场景标识（业务身份，如 {@code "vip"}）；留空表示默认实现，请求的场景无精确匹配时兜底。
      */
     String scenario() default "";
 
