@@ -8,6 +8,10 @@ import org.springframework.boot.autoconfigure.AutoConfigurationPackages;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -90,6 +94,21 @@ class MydddDomainAutoConfigurationTest {
                             .rootCause()
                             .hasMessageContaining("领域模块名重复：same");
                 });
+    }
+
+    @Test
+    void should_declare_autoconfiguration_in_imports_file() throws Exception {
+        List<String> declared;
+        try (InputStream in = getClass().getClassLoader().getResourceAsStream(
+                "META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports")) {
+            assertThat(in).as("自动装配 imports 文件必须存在").isNotNull();
+            declared = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8)).lines()
+                    .map(String::trim)
+                    .filter(line -> !line.isEmpty())
+                    .toList();
+        }
+
+        assertThat(declared).containsExactly(MydddDomainAutoConfiguration.class.getName());
     }
 
     @Test
