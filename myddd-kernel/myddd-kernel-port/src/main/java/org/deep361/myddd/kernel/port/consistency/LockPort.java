@@ -11,7 +11,7 @@ import java.util.function.Supplier;
  * {@code BizException(CommonErrorCode.LOCK_ACQUIRE_FAILED)}（HTTP 409）。
  *
  * <p><b>实现契约</b>：{@code key} 不可为空白、{@code leaseTime} 必须为正数（违反抛
- * {@link IllegalArgumentException}）；实现须保证同一线程可重入（Redisson 的
+ * {@link IllegalArgumentException}）；调用方必须保证 leaseTime 覆盖动作的最坏执行时长——超时后锁自动释放，互斥不再成立（到期自动释放是防死锁的刻意设计）。实现须保证同一线程可重入（Redisson 的
  * {@code RLock} 天然可重入）。
  */
 public interface LockPort {
@@ -21,7 +21,7 @@ public interface LockPort {
      *
      * @param key       锁键（业务语义明确，如 {@code order:1}）
      * @param waitTime  获取锁的最长等待时长；{@link Duration#ZERO} 表示不等待
-     * @param leaseTime 持锁时长，到期自动释放（防死锁），必须为正
+     * @param leaseTime 持锁时长，到期自动释放（防死锁），必须为正且覆盖动作最坏执行时长
      * @param action    受保护的动作
      * @param <T>       返回值类型
      * @return 动作返回值

@@ -53,6 +53,21 @@ class AuthUserTest {
         assertThat(user.permissions()).containsExactly("order:query");
         assertThatThrownBy(() -> user.roles().add("x")).isInstanceOf(UnsupportedOperationException.class);
         assertThatThrownBy(() -> user.permissions().add("x")).isInstanceOf(UnsupportedOperationException.class);
+
+        AuthUser normalized = new AuthUser("1", "u", null, null);
+
+        assertThatThrownBy(() -> normalized.roles().add("x")).isInstanceOf(UnsupportedOperationException.class);
+        assertThatThrownBy(() -> normalized.permissions().add("x")).isInstanceOf(UnsupportedOperationException.class);
+    }
+
+    @Test
+    void should_reject_blank_authority_element() {
+        assertThatThrownBy(() -> new AuthUser("1001", "cheney", Set.of(" "), Set.of()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("roles 的元素不能为空白");
+        assertThatThrownBy(() -> new AuthUser("1001", "cheney", Set.of(), Set.of("   ")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("permissions 的元素不能为空白");
     }
 
     @Test

@@ -8,7 +8,7 @@ import java.util.Objects;
  * <p>{@link #toString()} 刻意不输出密码，避免凭据进入日志/异常信息。
  *
  * @param username 用户名，不可为空白
- * @param password 密码，不可为 {@code null}
+ * @param password 密码，不可为空白
  */
 public record AuthCredentials(String username, String password) {
 
@@ -18,6 +18,9 @@ public record AuthCredentials(String username, String password) {
             throw new IllegalArgumentException("username 不能为空白");
         }
         Objects.requireNonNull(password, "password 不能为 null");
+        if (password.isBlank()) {
+            throw new IllegalArgumentException("password 不能为空白");
+        }
     }
 
     @Override

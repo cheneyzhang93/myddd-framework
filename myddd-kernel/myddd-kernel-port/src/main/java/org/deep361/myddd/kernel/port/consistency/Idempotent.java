@@ -11,6 +11,8 @@ import java.lang.annotation.Target;
  *
  * <p>命中重复请求时抛 {@code BizException(CommonErrorCode.IDEMPOTENT_CONFLICT)}（HTTP 409）；
  * {@link #message()} 非空时以其作为文案。
+ *
+ * <p>切面须用 Spring 的 {@code AnnotationUtils}/{@code MergedAnnotations} 解析（本注解未标 {@code @Inherited}，组合注解与类继承不生效）。
  */
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)

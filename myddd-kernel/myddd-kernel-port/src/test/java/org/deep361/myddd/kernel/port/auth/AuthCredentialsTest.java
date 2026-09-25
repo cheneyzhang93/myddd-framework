@@ -26,6 +26,12 @@ class AuthCredentialsTest {
         assertThatThrownBy(() -> new AuthCredentials("u", null))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessage("password 不能为 null");
+        assertThatThrownBy(() -> new AuthCredentials("u", ""))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("password 不能为空白");
+        assertThatThrownBy(() -> new AuthCredentials("u", "   "))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("password 不能为空白");
     }
 
     @Test

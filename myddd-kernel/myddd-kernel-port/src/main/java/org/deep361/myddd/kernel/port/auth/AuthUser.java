@@ -8,8 +8,8 @@ import java.util.Set;
  *
  * @param userId      用户唯一标识，不可为空白
  * @param username    用户名，不可为空白
- * @param roles       角色集合，可为 {@code null}（规范化为空）；内部防御性拷贝，元素不可为 {@code null}
- * @param permissions 权限集合，可为 {@code null}（规范化为空）；内部防御性拷贝，元素不可为 {@code null}
+ * @param roles       角色集合，可为 {@code null}（规范化为空）；内部防御性拷贝，元素不可为 {@code null} 或空白
+ * @param permissions 权限集合，可为 {@code null}（规范化为空）；内部防御性拷贝，元素不可为 {@code null} 或空白
  */
 public record AuthUser(String userId, String username, Set<String> roles, Set<String> permissions) {
 
@@ -39,7 +39,12 @@ public record AuthUser(String userId, String username, Set<String> roles, Set<St
         if (source == null) {
             return Set.of();
         }
-        source.forEach(element -> Objects.requireNonNull(element, field + " 的元素不能为 null"));
+        source.forEach(element -> {
+            Objects.requireNonNull(element, field + " 的元素不能为 null");
+            if (element.isBlank()) {
+                throw new IllegalArgumentException(field + " 的元素不能为空白");
+            }
+        });
         return Set.copyOf(source);
     }
 }

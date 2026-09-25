@@ -30,6 +30,10 @@ public interface AuthPort {
     /** 登出当前用户；未登录时为空操作。 */
     void logout();
 
-    /** 当前用户是否具备指定权限；未登录返回 {@code false}。 */
+    /**
+     * 当前用户是否具备指定权限；未登录返回 {@code false}。
+     *
+     * <p>{@code permission} 不可为空白（违反由实现快速失败）。
+     */
     boolean hasPermission(String permission);
 }
