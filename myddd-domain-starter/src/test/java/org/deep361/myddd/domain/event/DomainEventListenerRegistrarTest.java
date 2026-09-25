@@ -6,6 +6,7 @@ import org.deep361.myddd.domain.orphan.OrphanListenerBean;
 import org.deep361.myddd.kernel.ddd.event.DomainEvent;
 import org.deep361.myddd.kernel.ddd.event.DomainEventStage;
 import org.junit.jupiter.api.Test;
+import org.springframework.aop.framework.ProxyFactory;
 import org.springframework.beans.factory.support.StaticListableBeanFactory;
 
 import java.time.Instant;
@@ -65,6 +66,21 @@ class DomainEventListenerRegistrarTest {
     }
 
     @Test
+    void should_break_order_ties_by_method_name_then_signature() {
+        StaticListableBeanFactory beanFactory = new StaticListableBeanFactory();
+        beanFactory.addBean("nameOrderListenerBean",
+                new EventFixtures.NameOrderListenerBean(new EventFixtures.EventRecorder()));
+
+        List<RegisteredListener> listeners = EventTestSupport.freeze(beanFactory).listeners();
+
+        // 声明顺序是 zeta → on(DomainEvent) → on(OrderPaidEvent) → alpha，期望顺序必须只由排序键决定
+        assertThat(listeners)
+                .extracting(listener -> listener.method().getName()
+                        + "(" + listener.method().getParameterTypes()[0].getSimpleName() + ")")
+                .containsExactly("alpha(OrderPaidEvent)", "on(OrderPaidEvent)", "on(DomainEvent)", "zeta(OrderPaidEvent)");
+    }
+
+    @Test
     void should_freeze_into_unmodifiable_list() {
         StaticListableBeanFactory beanFactory = new StaticListableBeanFactory();
         beanFactory.addBean("paidListenerBean", new EventFixtures.PaidListenerBean(new EventFixtures.EventRecorder()));
@@ -95,6 +111,35 @@ class DomainEventListenerRegistrarTest {
         assertThat(EventTestSupport.freeze(beanFactory).listeners())
                 .extracting(RegisteredListener::beanName)
                 .containsExactly("paidListenerBean");
+    }
+
+    @Test
+    void should_skip_scoped_target_bean_and_keep_the_proxy_registered() {
+        EventFixtures.EventRecorder recorder = new EventFixtures.EventRecorder();
+        StaticListableBeanFactory beanFactory = new StaticListableBeanFactory();
+        beanFactory.addBean("scopedTarget.paidListenerBean", new EventFixtures.PaidListenerBean(recorder));
+        beanFactory.addBean("paidListenerBean", new EventFixtures.PaidListenerBean(recorder));
+
+        // scope 代理的目标 bean 与代理同名同方法：只注册代理，否则同一监听器会被投递两次
+        assertThat(EventTestSupport.freeze(beanFactory).listeners())
+                .extracting(RegisteredListener::beanName)
+                .containsExactly("paidListenerBean");
+    }
+
+    @Test
+    void should_register_jdk_proxied_listener_as_module_owned() throws Throwable {
+        EventFixtures.EventRecorder recorder = new EventFixtures.EventRecorder();
+        ProxyFactory proxyFactory = new ProxyFactory(new EventFixtures.ContractListenerBean(recorder));
+        proxyFactory.setInterfaces(EventFixtures.ContractListener.class);
+        StaticListableBeanFactory beanFactory = new StaticListableBeanFactory();
+        beanFactory.addBean("proxiedContractListenerBean", proxyFactory.getProxy());
+
+        List<RegisteredListener> listeners = EventTestSupport.freeze(beanFactory).listeners();
+
+        // 归属按目标类判定（JDK 代理类不在扫描包内），调用走代理实例，由代理转发给目标
+        assertThat(listeners).hasSize(1);
+        listeners.get(0).invoke(paidEvent());
+        assertThat(recorder.names()).containsExactly("contract");
     }
 
     @Test

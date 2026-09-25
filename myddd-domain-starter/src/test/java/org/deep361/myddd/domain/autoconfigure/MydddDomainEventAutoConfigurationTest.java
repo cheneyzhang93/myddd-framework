@@ -16,6 +16,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -108,6 +109,94 @@ class MydddDomainEventAutoConfigurationTest {
                             .hasRootCauseInstanceOf(IllegalStateException.class)
                             .rootCause()
                             .hasMessageContaining("myddd.domain.event.async.core-pool-size");
+                });
+    }
+
+    @Test
+    void should_fail_on_zero_queue_capacity() {
+        runner.withPropertyValues("myddd.domain.event.async.queue-capacity=0")
+                .run(context -> {
+                    assertThat(context).hasFailed();
+                    assertThat(context).getFailure()
+                            .hasRootCauseInstanceOf(IllegalStateException.class)
+                            .rootCause()
+                            .hasMessageContaining("myddd.domain.event.async.queue-capacity");
+                });
+    }
+
+    @Test
+    void should_fail_when_max_pool_size_below_core_pool_size() {
+        runner.withPropertyValues(
+                        "myddd.domain.event.async.core-pool-size=4",
+                        "myddd.domain.event.async.max-pool-size=2")
+                .run(context -> {
+                    assertThat(context).hasFailed();
+                    assertThat(context).getFailure()
+                            .hasRootCauseInstanceOf(IllegalStateException.class)
+                            .rootCause()
+                            .hasMessageContaining("myddd.domain.event.async.max-pool-size");
+                });
+    }
+
+    @Test
+    void should_fail_when_keep_alive_below_one_second() {
+        runner.withPropertyValues("myddd.domain.event.async.keep-alive=500ms")
+                .run(context -> {
+                    assertThat(context).hasFailed();
+                    assertThat(context).getFailure()
+                            .hasRootCauseInstanceOf(IllegalStateException.class)
+                            .rootCause()
+                            .hasMessageContaining("myddd.domain.event.async.keep-alive");
+                });
+    }
+
+    @Test
+    void should_fail_when_shutdown_timeout_below_one_second() {
+        runner.withPropertyValues("myddd.domain.event.async.shutdown-timeout=500ms")
+                .run(context -> {
+                    // 小于 1s 会被截断为 0，等于静默关闭"关闭时等待在飞任务"
+                    assertThat(context).hasFailed();
+                    assertThat(context).getFailure()
+                            .hasRootCauseInstanceOf(IllegalStateException.class)
+                            .rootCause()
+                            .hasMessageContaining("myddd.domain.event.async.shutdown-timeout");
+                });
+    }
+
+    @Test
+    void should_fail_on_invalid_async_configuration_even_when_user_defines_executor() {
+        runner.withPropertyValues("myddd.domain.event.async.queue-capacity=0")
+                .withBean(MydddDomainEventAutoConfiguration.ASYNC_EXECUTOR_BEAN_NAME, ThreadPoolTaskExecutor.class)
+                .run(context -> {
+                    // 应用替换线程池 ≠ 配置校验可以被跳过：非法配置一律启动失败
+                    assertThat(context).hasFailed();
+                    assertThat(context).getFailure()
+                            .hasRootCauseInstanceOf(IllegalStateException.class)
+                            .rootCause()
+                            .hasMessageContaining("myddd.domain.event.async.queue-capacity");
+                });
+    }
+
+    @Test
+    void should_wait_for_in_flight_async_listener_on_context_close() {
+        runner.withPropertyValues("myddd.domain.event.async.shutdown-timeout=5s")
+                .withBean(EventFixtures.EventRecorder.class)
+                .withBean(EventFixtures.SlowAsyncListenerBean.class)
+                .run(context -> {
+                    EventFixtures.SlowAsyncListenerBean listener =
+                            context.getBean(EventFixtures.SlowAsyncListenerBean.class);
+                    EventTestSupport.beginTransaction();
+                    try {
+                        context.getBean(DomainEventPublisher.class).publish(paidEvent(), "org.example.order.Order", "o-1");
+                        EventTestSupport.commitTransaction();
+                    } finally {
+                        EventTestSupport.resetTransactionState();
+                    }
+                    assertThat(listener.started.await(5, TimeUnit.SECONDS)).isTrue();
+
+                    context.close();
+
+                    assertThat(listener.finished()).as("close() 必须等待在飞异步监听器结束").isTrue();
                 });
     }
 

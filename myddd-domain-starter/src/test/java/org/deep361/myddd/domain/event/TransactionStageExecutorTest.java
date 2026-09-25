@@ -81,6 +81,48 @@ class TransactionStageExecutorTest {
     }
 
     @Test
+    void after_commit_should_skip_when_synchronization_inactive_but_transaction_active() {
+        List<String> calls = new ArrayList<>();
+        EventTestSupport.beginActualTransactionWithoutSynchronization();
+
+        // 同步未激活时注册钩子会直接抛异常；正确行为是跳过，绝不能把事件丢掉后抛出去
+        executor.execute(DomainEventStage.AFTER_COMMIT, () -> calls.add("after-commit"));
+
+        assertThat(calls).isEmpty();
+    }
+
+    @Test
+    void after_commit_should_run_inline_when_registered_from_within_after_commit() {
+        List<String> calls = new ArrayList<>();
+        EventTestSupport.beginTransaction();
+
+        // 事务同步列表在回调触发前已被快照：回调内新注册的钩子永远不会收到 afterCommit
+        executor.execute(DomainEventStage.AFTER_COMMIT, () -> {
+            calls.add("outer");
+            executor.execute(DomainEventStage.AFTER_COMMIT, () -> calls.add("nested"));
+        });
+        EventTestSupport.commitTransaction();
+
+        assertThat(calls).containsExactly("outer", "nested");
+    }
+
+    @Test
+    void after_commit_should_defer_again_in_a_later_transaction() {
+        List<String> calls = new ArrayList<>();
+        EventTestSupport.beginTransaction();
+        executor.execute(DomainEventStage.AFTER_COMMIT, () -> calls.add("first"));
+        EventTestSupport.commitTransaction();
+
+        // 上一次提交的回调状态不得泄漏到下一个事务：第二个动作必须重新被延迟
+        EventTestSupport.beginTransaction();
+        executor.execute(DomainEventStage.AFTER_COMMIT, () -> calls.add("second"));
+        assertThat(calls).containsExactly("first");
+        EventTestSupport.commitTransaction();
+
+        assertThat(calls).containsExactly("first", "second");
+    }
+
+    @Test
     void after_commit_should_register_one_hook_per_action_in_order() {
         List<String> calls = new ArrayList<>();
         EventTestSupport.beginTransaction();

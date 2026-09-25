@@ -29,7 +29,7 @@ public class MydddDomainEventProperties {
         /** 非核心线程空闲存活时间。 */
         private Duration keepAlive = Duration.ofSeconds(60);
 
-        /** 上下文关闭时等待在飞监听任务完成的上限。 */
+        /** 上下文关闭时等待在飞监听任务完成的上限（必须 ≥ 1s：线程池等待粒度是整秒）。 */
         private Duration shutdownTimeout = Duration.ofSeconds(30);
 
         public int getCorePoolSize() {
@@ -88,8 +88,9 @@ public class MydddDomainEventProperties {
             if (keepAlive == null || keepAlive.toSeconds() < 1) {
                 throw new IllegalStateException("myddd.domain.event.async.keep-alive 必须 ≥ 1s，实际 " + keepAlive);
             }
-            if (shutdownTimeout == null || shutdownTimeout.isNegative()) {
-                throw new IllegalStateException("myddd.domain.event.async.shutdown-timeout 不能为负数，实际 " + shutdownTimeout);
+            if (shutdownTimeout == null || shutdownTimeout.toSeconds() < 1) {
+                throw new IllegalStateException("myddd.domain.event.async.shutdown-timeout 必须 ≥ 1s（线程池等待"
+                        + "粒度是整秒，小于 1s 会被截断为 0，等于静默关闭\"关闭时等待在飞任务\"），实际 " + shutdownTimeout);
             }
         }
     }

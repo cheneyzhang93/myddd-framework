@@ -27,11 +27,10 @@ import java.util.function.Supplier;
  * 因此异步任务总是在提交之后才提交给线程池；无事务上下文时 {@code AFTER_COMMIT} 阶段整体跳过
  * （含异步，任务不会进入线程池）。
  *
- * <p><b>快照来源</b>：构造器可直接接收已冻结的监听器列表（测试与内部装配），也可接收
- * {@link DomainEventListenerRegistrar}——此时在<b>每次分发时</b>读取注册器已冻结的快照。注册器要到
- * {@code afterSingletonsInstantiated()} 才冻结快照，而本分发器 bean 在上下文刷新期间（早于冻结）就被
- * 实例化，故构造期读取必然失败；分发发生在上下文刷新完成之后，读取到的即冻结快照
- * （上下文未刷新完成就分发时由注册器抛 {@link IllegalStateException}）。
+ * <p><b>快照来源</b>：构造器接收 {@link DomainEventListenerRegistrar}，在<b>每次分发时</b>读取注册器
+ * 已冻结的快照。注册器要到 {@code afterSingletonsInstantiated()} 才冻结快照，而本分发器 bean 在上下文
+ * 刷新期间（早于冻结）就被实例化，故构造期读取必然失败；分发发生在上下文刷新完成之后，读取到的即冻结
+ * 快照（上下文未刷新完成就分发时由注册器抛 {@link IllegalStateException}）。
  */
 public class DomainEventDispatcher {
 
@@ -46,11 +45,6 @@ public class DomainEventDispatcher {
         this(Objects.requireNonNull(registrar, "监听器注册器不能为 null")::listeners, stageExecutor, asyncExecutor);
     }
 
-    DomainEventDispatcher(List<RegisteredListener> listeners, TransactionStageExecutor stageExecutor,
-                          Executor asyncExecutor) {
-        this(frozenSnapshot(Objects.requireNonNull(listeners, "监听器快照不能为 null")), stageExecutor, asyncExecutor);
-    }
-
     private DomainEventDispatcher(Supplier<List<RegisteredListener>> listeners,
                                   TransactionStageExecutor stageExecutor, Executor asyncExecutor) {
         this.listeners = Objects.requireNonNull(listeners, "监听器快照不能为 null");
@@ -58,12 +52,7 @@ public class DomainEventDispatcher {
         this.asyncExecutor = Objects.requireNonNull(asyncExecutor, "异步执行器不能为 null");
     }
 
-    private static Supplier<List<RegisteredListener>> frozenSnapshot(List<RegisteredListener> listeners) {
-        List<RegisteredListener> snapshot = List.copyOf(listeners);
-        return () -> snapshot;
-    }
-
-    /** 把事件投递给指定阶段的所有匹配监听器（顺序即快照顺序：order → bean 名 → 方法名）。 */
+    /** 把事件投递给指定阶段的所有匹配监听器（顺序即快照顺序：order → bean 名 → 方法名 → 方法签名）。 */
     public void dispatch(DomainEvent event, DomainEventStage stage) {
         Objects.requireNonNull(event, "领域事件不能为 null");
         Objects.requireNonNull(stage, "投递阶段不能为 null");

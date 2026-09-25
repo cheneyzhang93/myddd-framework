@@ -42,6 +42,11 @@ public final class EventTestSupport {
         TransactionSynchronizationManager.initSynchronization();
     }
 
+    /** 模拟只有"事务活动"而未激活同步（异常场景：此时注册提交回调会直接失败）。 */
+    public static void beginActualTransactionWithoutSynchronization() {
+        TransactionSynchronizationManager.setActualTransactionActive(true);
+    }
+
     /** 模拟提交：先取出回调再清理线程状态，最后按注册顺序触发 afterCommit。 */
     public static void commitTransaction() {
         List<TransactionSynchronization> synchronizations = TransactionSynchronizationManager.getSynchronizations();

@@ -47,7 +47,8 @@ public class DomainEventListenerRegistrar implements SmartInitializingSingleton 
             .comparingInt((RegisteredListener listener) -> listener.stage().ordinal())
             .thenComparingInt(RegisteredListener::order)
             .thenComparing(RegisteredListener::beanName)
-            .thenComparing(listener -> listener.method().getName());
+            .thenComparing(listener -> listener.method().getName())
+            .thenComparing(listener -> listener.method().toGenericString());
 
     private final ListableBeanFactory beanFactory;
     private final DomainModuleRegistry moduleRegistry;
@@ -71,7 +72,8 @@ public class DomainEventListenerRegistrar implements SmartInitializingSingleton 
     }
 
     /**
-     * 冻结的监听器快照：按 阶段 → order → bean 名 → 方法名 升序，不可修改。
+     * 冻结的监听器快照：按 阶段 → order → bean 名 → 方法名 → 方法签名 升序，不可修改。
+     * 方法签名兜底保证"同名重载"也有确定顺序（全序，不依赖反射返回顺序）。
      *
      * @throws IllegalStateException 上下文尚未刷新完成（快照未冻结）
      */

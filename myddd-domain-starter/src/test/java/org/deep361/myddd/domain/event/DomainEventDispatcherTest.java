@@ -99,6 +99,17 @@ class DomainEventDispatcherTest {
     }
 
     @Test
+    void should_propagate_in_transaction_error_unwrapped() {
+        StaticListableBeanFactory beanFactory = new StaticListableBeanFactory();
+        beanFactory.addBean("assertingListenerBean", new FailingListeners.AssertingListenerBean());
+
+        // Error 必须保持原类型上抛（不能包装成 IllegalStateException，否则上层无法识别中断/断言失败）
+        assertThatThrownBy(() -> dispatcherOf(beanFactory).dispatch(paidEvent(), DomainEventStage.IN_TRANSACTION))
+                .isInstanceOf(AssertionError.class)
+                .hasMessage("boom-error");
+    }
+
+    @Test
     void should_defer_after_commit_listener_until_commit() {
         EventFixtures.EventRecorder recorder = new EventFixtures.EventRecorder();
         StaticListableBeanFactory beanFactory = new StaticListableBeanFactory();

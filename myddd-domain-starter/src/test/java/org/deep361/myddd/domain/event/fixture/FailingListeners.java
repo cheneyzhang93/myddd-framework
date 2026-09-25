@@ -29,6 +29,15 @@ public final class FailingListeners {
         }
     }
 
+    /** 事务内抛 Error（{@link AssertionError}）：必须原样上抛，不得包装成框架异常。 */
+    public static class AssertingListenerBean {
+
+        @DomainEventListener(stage = DomainEventStage.IN_TRANSACTION, order = 1)
+        public void on(OrderPaidEvent event) {
+            throw new AssertionError("boom-error");
+        }
+    }
+
     /** 事务内、排在异常监听器之后：失败必须中断它。 */
     public static class SurvivorListenerBean {
 

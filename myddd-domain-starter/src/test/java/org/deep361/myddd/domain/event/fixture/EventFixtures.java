@@ -8,7 +8,9 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /** 事件总线测试夹具：事件、录制器与各场景监听器 bean。 */
 public final class EventFixtures {
@@ -166,6 +168,70 @@ public final class EventFixtures {
         @DomainEventListener(async = true, order = 5)
         public void on(OrderPaidEvent event) {
             recorder.record("async", event);
+        }
+    }
+
+    /** 异步慢监听器：在工作线程里停留一段可观测时间（关闭时等待在飞任务的断言用）。 */
+    public static class SlowAsyncListenerBean {
+
+        /** 工作线程已开始执行本监听器。 */
+        public final CountDownLatch started = new CountDownLatch(1);
+
+        private final EventRecorder recorder;
+        private final AtomicBoolean finished = new AtomicBoolean();
+
+        public SlowAsyncListenerBean(EventRecorder recorder) {
+            this.recorder = recorder;
+        }
+
+        @DomainEventListener(async = true)
+        public void on(OrderPaidEvent event) {
+            started.countDown();
+            try {
+                Thread.sleep(300);
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                return;
+            }
+            finished.set(true);
+            recorder.record("slow", event);
+        }
+
+        public boolean finished() {
+            return finished.get();
+        }
+    }
+
+    /**
+     * 同 stage、同 order 的 4 个方法：声明顺序被人为打乱（zeta → on(DomainEvent) → on(OrderPaidEvent) → alpha），
+     * 期望顺序只由 方法名 → 方法签名 决定，不依赖反射返回顺序。
+     */
+    public static class NameOrderListenerBean {
+
+        private final EventRecorder recorder;
+
+        public NameOrderListenerBean(EventRecorder recorder) {
+            this.recorder = recorder;
+        }
+
+        @DomainEventListener(stage = DomainEventStage.IN_TRANSACTION, order = 7)
+        public void zeta(OrderPaidEvent event) {
+            recorder.record("zeta", event);
+        }
+
+        @DomainEventListener(stage = DomainEventStage.IN_TRANSACTION, order = 7)
+        public void on(DomainEvent event) {
+            recorder.record("any", event);
+        }
+
+        @DomainEventListener(stage = DomainEventStage.IN_TRANSACTION, order = 7)
+        public void on(OrderPaidEvent event) {
+            recorder.record("paid", event);
+        }
+
+        @DomainEventListener(stage = DomainEventStage.IN_TRANSACTION, order = 7)
+        public void alpha(OrderPaidEvent event) {
+            recorder.record("alpha", event);
         }
     }
 

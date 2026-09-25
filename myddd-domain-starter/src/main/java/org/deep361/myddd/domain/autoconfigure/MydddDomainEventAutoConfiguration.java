@@ -23,6 +23,9 @@ import java.util.concurrent.Executor;
  * {@code @Domain} 领域模块的扫描包内，否则启动失败。
  *
  * <p>每个 bean 都是 {@code @ConditionalOnMissingBean}：应用可整体替换任一环节（例如换成 Outbox 发布器）。
+ *
+ * <p>配置校验在<b>本配置类构造期</b>完成（不挂在可被应用替换的线程池 bean 上）：无论应用是否自定义异步
+ * 线程池，非法的 {@code myddd.domain.event.async.*} 都会让启动失败，不会被静默忽略。
  */
 @AutoConfiguration(after = MydddDomainAutoConfiguration.class)
 @EnableConfigurationProperties(MydddDomainEventProperties.class)
@@ -30,6 +33,10 @@ public class MydddDomainEventAutoConfiguration {
 
     /** 异步监听器线程池的 bean 名（应用可声明同名 bean 整体替换）。 */
     public static final String ASYNC_EXECUTOR_BEAN_NAME = "mydddDomainEventAsyncExecutor";
+
+    public MydddDomainEventAutoConfiguration(MydddDomainEventProperties properties) {
+        properties.getAsync().validate();
+    }
 
     @Bean
     @ConditionalOnMissingBean
@@ -44,12 +51,11 @@ public class MydddDomainEventAutoConfiguration {
         return new TransactionStageExecutor();
     }
 
-    /** 异步监听器线程池：有界队列 + 关闭时等待在飞任务；配置非法即启动失败。 */
+    /** 异步监听器线程池：有界队列 + 关闭时等待在飞任务（配置合法性已在本配置类构造期校验）。 */
     @Bean(name = ASYNC_EXECUTOR_BEAN_NAME)
     @ConditionalOnMissingBean(name = ASYNC_EXECUTOR_BEAN_NAME)
     public ThreadPoolTaskExecutor mydddDomainEventAsyncExecutor(MydddDomainEventProperties properties) {
         MydddDomainEventProperties.Async async = properties.getAsync();
-        async.validate();
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         executor.setCorePoolSize(async.getCorePoolSize());
         executor.setMaxPoolSize(async.getMaxPoolSize());
