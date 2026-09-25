@@ -46,6 +46,24 @@ class RuleMatchTest {
         RuleMatch match = RuleFixtures.vipMatch();
 
         assertThatThrownBy(() -> match.attributes().clear()).isInstanceOf(UnsupportedOperationException.class);
+        assertThatThrownBy(() -> RuleMatch.of("discount").attributes().put("k", "v"))
+                .isInstanceOf(UnsupportedOperationException.class);
+    }
+
+    @Test
+    void should_report_attribute_presence() {
+        RuleMatch match = RuleFixtures.vipMatch();
+
+        assertThat(match.hasAttribute(RuleFixtures.LEVEL)).isTrue();
+        assertThat(match.hasAttribute("missing")).isFalse();
+    }
+
+    @Test
+    void should_keep_insertion_order_of_attributes() {
+        RuleMatch match = RuleMatch.of("discount").with("z", 1).with("y", 2).with("x", 3);
+
+        assertThat(match.attributes().keySet()).containsExactly("z", "y", "x");
+        assertThat(match.attributes().values()).containsExactly(1, 2, 3);
     }
 
     @Test
@@ -55,21 +73,39 @@ class RuleMatchTest {
         assertThat(match.requireAttribute(RuleFixtures.AMOUNT, BigDecimal.class)).isEqualTo(new BigDecimal("100.00"));
         assertThatThrownBy(() -> match.requireAttribute("missing", BigDecimal.class))
                 .isInstanceOf(NoSuchElementException.class)
-                .hasMessageContaining("missing")
-                .hasMessageContaining("可用属性");
+                .hasMessage("规则事实缺少属性：missing，可用属性=[level, amount]");
         assertThatThrownBy(() -> match.requireAttribute(RuleFixtures.AMOUNT, String.class))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("amount")
-                .hasMessageContaining("BigDecimal");
+                .hasMessage("规则事实属性类型不符：amount 期望 String，实际 java.math.BigDecimal");
     }
 
     @Test
     void should_reject_null_scenario_key_and_value() {
-        assertThatThrownBy(() -> RuleMatch.of(null)).isInstanceOf(NullPointerException.class);
-        assertThatThrownBy(() -> RuleMatch.of(" ")).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> RuleMatch.of(null)).isInstanceOf(NullPointerException.class)
+                .hasMessage("scenario 不能为 null");
+        assertThatThrownBy(() -> RuleMatch.of(" ")).isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("scenario 不能为空白");
         assertThatThrownBy(() -> RuleMatch.of("discount").with(null, "x"))
-                .isInstanceOf(NullPointerException.class);
+                .isInstanceOf(NullPointerException.class)
+                .hasMessage("属性名不能为 null");
         assertThatThrownBy(() -> RuleMatch.of("discount").with("k", null))
-                .isInstanceOf(NullPointerException.class);
+                .isInstanceOf(NullPointerException.class)
+                .hasMessage("属性值不能为 null：k");
+    }
+
+    @Test
+    void should_reject_null_key_on_readers() {
+        RuleMatch match = RuleFixtures.vipMatch();
+
+        assertThatThrownBy(() -> match.hasAttribute(null)).isInstanceOf(NullPointerException.class)
+                .hasMessage("属性名不能为 null");
+        assertThatThrownBy(() -> match.attribute(null)).isInstanceOf(NullPointerException.class)
+                .hasMessage("属性名不能为 null");
+        assertThatThrownBy(() -> match.requireAttribute(null, BigDecimal.class))
+                .isInstanceOf(NullPointerException.class)
+                .hasMessage("属性名不能为 null");
+        assertThatThrownBy(() -> match.requireAttribute(RuleFixtures.LEVEL, null))
+                .isInstanceOf(NullPointerException.class)
+                .hasMessage("type 不能为 null");
     }
 }

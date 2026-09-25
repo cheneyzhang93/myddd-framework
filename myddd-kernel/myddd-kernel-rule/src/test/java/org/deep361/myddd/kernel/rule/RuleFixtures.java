@@ -1,6 +1,7 @@
 package org.deep361.myddd.kernel.rule;
 
 import java.math.BigDecimal;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /** 规则夹具：以"会员等级折扣"为例（VIP 8 折、普通 95 折、其余不打折）。 */
 final class RuleFixtures {
@@ -59,6 +60,27 @@ final class RuleFixtures {
             @Override
             public BigDecimal apply(RuleMatch match) {
                 return match.requireAttribute(AMOUNT, BigDecimal.class).multiply(new BigDecimal("0.95"));
+            }
+        };
+    }
+
+    /** 恒匹配且记录 matches 求值次数的规则：用于断言"命中即止，后续规则连 matches 都不求值"。 */
+    static Rule<BigDecimal> countingRule(String name, AtomicInteger matchesCalls) {
+        return new Rule<>() {
+            @Override
+            public String name() {
+                return name;
+            }
+
+            @Override
+            public boolean matches(RuleMatch match) {
+                matchesCalls.incrementAndGet();
+                return true;
+            }
+
+            @Override
+            public BigDecimal apply(RuleMatch match) {
+                return new BigDecimal("1.00");
             }
         };
     }

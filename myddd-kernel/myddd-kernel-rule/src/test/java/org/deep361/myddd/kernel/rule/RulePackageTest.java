@@ -3,6 +3,7 @@ package org.deep361.myddd.kernel.rule;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -72,13 +73,16 @@ class RulePackageTest {
 
     @Test
     void should_reject_invalid_package_definition() {
-        assertThatThrownBy(() -> RulePackage.builder(" ")).isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> RulePackage.builder(null)).isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> RulePackage.builder(" ")).isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("name 不能为空白");
+        assertThatThrownBy(() -> RulePackage.builder(null)).isInstanceOf(NullPointerException.class)
+                .hasMessage("name 不能为 null");
         assertThatThrownBy(() -> RulePackage.<BigDecimal>builder("discount").rule(null))
-                .isInstanceOf(NullPointerException.class);
+                .isInstanceOf(NullPointerException.class)
+                .hasMessage("rule 不能为 null");
         assertThatThrownBy(() -> RulePackage.<BigDecimal>builder("discount").build())
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("至少");
+                .hasMessage("规则包 discount 必须至少包含一条规则");
     }
 
     @Test
@@ -132,5 +136,82 @@ class RulePackageTest {
         assertThatThrownBy(() -> rulePackage.apply(RuleFixtures.normalMatch()))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("match boom");
+    }
+
+    @Test
+    void should_not_evaluate_rules_after_first_match() {
+        AtomicInteger laterMatchesCalls = new AtomicInteger();
+        RulePackage<BigDecimal> rulePackage = RulePackage.<BigDecimal>builder("discount")
+                .rule(RuleFixtures.vipDiscountRule())
+                .rule(RuleFixtures.countingRule("later", laterMatchesCalls))
+                .build();
+
+        assertThat(rulePackage.apply(RuleFixtures.vipMatch())).contains(new BigDecimal("80.0000"));
+        assertThat(laterMatchesCalls).hasValue(0);
+
+        assertThat(rulePackage.firstMatch(RuleFixtures.vipMatch())).map(Rule::name).contains("vip-discount");
+        assertThat(laterMatchesCalls).hasValue(0);
+    }
+
+    @Test
+    void should_reject_rule_with_null_name() {
+        Rule<BigDecimal> nullNamed = new Rule<>() {
+            @Override
+            public String name() {
+                return null;
+            }
+
+            @Override
+            public boolean matches(RuleMatch match) {
+                return true;
+            }
+
+            @Override
+            public BigDecimal apply(RuleMatch match) {
+                return BigDecimal.ONE;
+            }
+        };
+
+        assertThatThrownBy(() -> RulePackage.<BigDecimal>builder("discount").rule(nullNamed))
+                .isInstanceOf(NullPointerException.class)
+                .hasMessage("规则 name() 不能为 null");
+    }
+
+    @Test
+    void should_snapshot_rules_at_build_time() {
+        RulePackage.Builder<BigDecimal> builder = RulePackage.<BigDecimal>builder("discount")
+                .rule(RuleFixtures.vipDiscountRule());
+        RulePackage<BigDecimal> rulePackage = builder.build();
+
+        builder.rule(RuleFixtures.normalDiscountRule());
+
+        assertThat(rulePackage.size()).isEqualTo(1);
+        assertThat(rulePackage.rules()).extracting(Rule::name).containsExactly("vip-discount");
+        assertThat(builder.build().size()).isEqualTo(2);
+    }
+
+    @Test
+    void should_reject_rule_returning_null_after_match() {
+        Rule<BigDecimal> nullResult = new Rule<>() {
+            @Override
+            public String name() {
+                return "null-result";
+            }
+
+            @Override
+            public boolean matches(RuleMatch match) {
+                return true;
+            }
+
+            @Override
+            public BigDecimal apply(RuleMatch match) {
+                return null;
+            }
+        };
+        RulePackage<BigDecimal> rulePackage = RulePackage.<BigDecimal>builder("discount").rule(nullResult).build();
+
+        assertThatThrownBy(() -> rulePackage.apply(RuleFixtures.vipMatch()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("规则 null-result 命中后 apply 返回 null：命中规则必须产出结果，否则应在 matches 中判否");
     }
 }

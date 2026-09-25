@@ -12,7 +12,9 @@ import java.util.Set;
  *
  * <p>规则顺序即业务优先级：{@link #apply(RuleMatch)} 依次求值 {@link Rule#matches(RuleMatch)}，
  * 命中的第一条规则被 {@link Rule#apply(RuleMatch)} 执行并返回；<b>之后的规则既不求值也不执行</b>。
- * 未命中任何规则返回 {@link Optional#empty()}（"无规则适用"是正常业务分支，不是异常）。
+ * 未命中任何规则返回 {@link Optional#empty()}（"无规则适用"是正常业务分支，不是异常）；
+ * {@code empty} 只表示"无规则适用"——命中的规则 {@code apply} 返回 {@code null} 属规则契约违背，
+ * 执行时抛 {@link IllegalStateException} 而非静默并入 {@code empty}。
  *
  * <p>规则名在包内唯一（构建期校验）：命中日志、灰度开关都依赖"规则名"能唯一定位一条规则。
  */
@@ -58,9 +60,24 @@ public final class RulePackage<O> {
         return rules.stream().filter(rule -> rule.matches(match)).findFirst();
     }
 
-    /** 执行第一条适用规则并返回其结果；无适用规则返回空。 */
+    /**
+     * 执行第一条适用规则并返回其结果；无适用规则返回空。
+     *
+     * @throws IllegalStateException 命中的规则 {@link Rule#apply(RuleMatch)} 返回 {@code null}
+     *                               （命中即必须产出结果；"无结果"应由 {@code matches} 判否表达）
+     */
     public Optional<O> apply(RuleMatch match) {
-        return firstMatch(match).map(rule -> rule.apply(match));
+        Optional<Rule<O>> matched = firstMatch(match);
+        if (matched.isEmpty()) {
+            return Optional.empty();
+        }
+        Rule<O> rule = matched.get();
+        O result = rule.apply(match);
+        if (result == null) {
+            throw new IllegalStateException("规则 " + rule.name()
+                    + " 命中后 apply 返回 null：命中规则必须产出结果，否则应在 matches 中判否");
+        }
+        return Optional.of(result);
     }
 
     /** 规则包构建器。 */

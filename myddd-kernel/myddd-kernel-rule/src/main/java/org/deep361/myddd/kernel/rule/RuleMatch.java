@@ -63,8 +63,13 @@ public final class RuleMatch {
         return attributes;
     }
 
-    /** 属性是否存在。 */
+    /**
+     * 属性是否存在。
+     *
+     * @throws NullPointerException key 为 null
+     */
     public boolean hasAttribute(String key) {
+        Objects.requireNonNull(key, "属性名不能为 null");
         return attributes.containsKey(key);
     }
 
