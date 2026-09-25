@@ -18,6 +18,7 @@
         <module>myddd-kernel/myddd-kernel-common</module>
         <module>myddd-kernel/myddd-kernel-ddd</module>
         <module>myddd-kernel/myddd-kernel-port</module>
+        <module>myddd-kernel/myddd-kernel-extension</module>
     </modules>
 
     <properties>
