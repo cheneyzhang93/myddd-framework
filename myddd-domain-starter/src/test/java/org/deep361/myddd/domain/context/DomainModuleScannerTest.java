@@ -135,6 +135,13 @@ class DomainModuleScannerTest {
     }
 
     @Test
+    void should_deduplicate_and_trim_base_packages() {
+        DomainModuleScanner scanner = new DomainModuleScanner(List.of(SINGLE + " ", SINGLE, SINGLE));
+
+        assertThat(scanner.basePackages()).containsExactly(SINGLE);
+    }
+
+    @Test
     void should_reject_null_or_blank_base_packages() {
         assertThatThrownBy(() -> new DomainModuleScanner(null))
                 .isInstanceOf(NullPointerException.class)
