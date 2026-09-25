@@ -3,6 +3,7 @@ package org.deep361.myddd.domain.outbox;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -11,6 +12,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 事务感知的内存 Outbox 存储（测试替身；Plan 3 的 myddd-persistence-starter 提供 JDBC 实现）。
@@ -26,7 +28,9 @@ import java.util.Objects;
  * <p><b>租约</b>：与 {@link OutboxStore} 契约一致，租约不落在 {@link OutboxRecord} 上，用内部
  * {@code leaseUntilByEventId} 维护；认领即续租，过期可被重新认领（模拟"投递器崩溃后恢复"）。
  *
- * <p>测试结束请调用 {@link #reset()}（清记录 + 解绑当前线程资源）。
+ * <p>测试结束请调用 {@link #reset()}（清记录 + 解绑当前线程资源）。投递循环类用例用
+ * {@link #awaitStatus(String, OutboxStatus, Duration)} 等记录的终态：投递器"发送成功"与"标记"是两步，
+ * 在消息端口上被唤醒后直接读记录会读到中间态。
  */
 public final class TransactionAwareInMemoryOutboxStore implements OutboxStore {
 
@@ -45,6 +49,7 @@ public final class TransactionAwareInMemoryOutboxStore implements OutboxStore {
             throw new IllegalStateException("Outbox 记录已存在（同一 eventId 重复保存）：" + record.eventId());
         }
         rows.put(record.eventId(), record);
+        notifyAll();
     }
 
     @Override
@@ -67,6 +72,9 @@ public final class TransactionAwareInMemoryOutboxStore implements OutboxStore {
             leaseUntilByEventId.put(dispatching.eventId(), leaseUntil);
             claimed.add(dispatching);
         }
+        if (!claimed.isEmpty()) {
+            notifyAll();
+        }
         return claimed;
     }
 
@@ -80,6 +88,40 @@ public final class TransactionAwareInMemoryOutboxStore implements OutboxStore {
         if (record.status() != OutboxStatus.DISPATCHING) {
             leaseUntilByEventId.remove(record.eventId());
         }
+        notifyAll();
+    }
+
+    /**
+     * 等待某条已落库记录进入期望状态（投递循环用例的确定性同步点；等待/通知式，不用 sleep 轮询）。
+     *
+     * <p><b>为什么需要它</b>：投递器"发送成功"与"标记 DISPATCHED"是两步（先 {@code send} 后 {@code update}，
+     * 见至少一次语义）——测试线程在消息端口上被唤醒时可能读到中间态 {@code DISPATCHING}。本方法盯住记录的
+     * 终态，超时返回 {@code false} 交给调用方断言：既不假通过，也不因调度时序假红。
+     *
+     * @param eventId 记录 id
+     * @param status  期望状态
+     * @param timeout 等待上限
+     * @return 到达期望状态返回 true；{@code timeout} 内未到达返回 false
+     */
+    public synchronized boolean awaitStatus(String eventId, OutboxStatus status, Duration timeout)
+            throws InterruptedException {
+        Objects.requireNonNull(eventId, "eventId 不能为 null");
+        Objects.requireNonNull(status, "status 不能为 null");
+        Objects.requireNonNull(timeout, "timeout 不能为 null");
+        long deadline = System.nanoTime() + timeout.toNanos();
+        while (!hasStatus(eventId, status)) {
+            long remaining = deadline - System.nanoTime();
+            if (remaining <= 0) {
+                return false;
+            }
+            TimeUnit.NANOSECONDS.timedWait(this, remaining);
+        }
+        return true;
+    }
+
+    private boolean hasStatus(String eventId, OutboxStatus status) {
+        OutboxRecord record = committedRows.get(eventId);
+        return record != null && record.status() == status;
     }
 
     /** 已提交视图（按 createdAt、eventId 升序的不可变快照），供测试断言使用。 */
@@ -92,6 +134,7 @@ public final class TransactionAwareInMemoryOutboxStore implements OutboxStore {
         committedRows.clear();
         leaseUntilByEventId.clear();
         TransactionSynchronizationManager.unbindResourceIfPossible(this);
+        notifyAll();
     }
 
     private boolean claimable(OutboxRecord record, Instant now) {
@@ -143,5 +186,6 @@ public final class TransactionAwareInMemoryOutboxStore implements OutboxStore {
         committedRows.clear();
         committedRows.putAll(working);
         leaseUntilByEventId.keySet().retainAll(working.keySet());
+        notifyAll();
     }
 }
