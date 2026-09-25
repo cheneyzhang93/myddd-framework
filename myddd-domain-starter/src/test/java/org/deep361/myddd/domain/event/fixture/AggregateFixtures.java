@@ -40,6 +40,21 @@ public final class AggregateFixtures {
         }
     }
 
+    /** 提交后监听发货事件：验证批量投递时"每个事件"都进入 AFTER_COMMIT 阶段（不只第一个）。 */
+    public static class AfterCommitShippedListenerBean {
+
+        private final EventRecorder recorder;
+
+        public AfterCommitShippedListenerBean(EventRecorder recorder) {
+            this.recorder = recorder;
+        }
+
+        @DomainEventListener
+        public void on(OrderShippedEvent event) {
+            recorder.record("after-commit-shipped", event);
+        }
+    }
+
     /** 处理支付事件时给聚合追加发货事件：验证 drain 循环会投递"投递期间新登记"的事件。 */
     public static class FollowUpListenerBean {
 

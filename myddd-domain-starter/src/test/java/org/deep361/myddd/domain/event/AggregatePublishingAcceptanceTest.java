@@ -71,6 +71,7 @@ class AggregatePublishingAcceptanceTest {
         StaticListableBeanFactory beanFactory = new StaticListableBeanFactory();
         beanFactory.addBean("explodingListenerBean", new FailingListeners.ExplodingListenerBean());
         beanFactory.addBean("survivorListenerBean", new FailingListeners.SurvivorListenerBean(recorder));
+        beanFactory.addBean("shippedListenerBean", new EventFixtures.ShippedListenerBean(recorder));
         AggregateFixtures.OrderAggregate aggregate = new AggregateFixtures.OrderAggregate("o-1");
         aggregate.pay();
         aggregate.ship();
@@ -88,17 +89,41 @@ class AggregatePublishingAcceptanceTest {
         EventFixtures.EventRecorder recorder = new EventFixtures.EventRecorder();
         StaticListableBeanFactory beanFactory = new StaticListableBeanFactory();
         beanFactory.addBean("paidListenerBean", new EventFixtures.PaidListenerBean(recorder));
+        beanFactory.addBean("shippedListenerBean", new EventFixtures.ShippedListenerBean(recorder));
         beanFactory.addBean("defaultStageListenerBean", new EventFixtures.DefaultStageListenerBean(recorder));
+        beanFactory.addBean("afterCommitShippedListenerBean",
+                new AggregateFixtures.AfterCommitShippedListenerBean(recorder));
         AggregateFixtures.OrderAggregate aggregate = new AggregateFixtures.OrderAggregate("o-1");
         aggregate.pay();
+        aggregate.ship();
         DomainEventPublisher publisher = publisherOf(beanFactory);
 
         EventTestSupport.beginTransaction();
         publisher.publish(aggregate);
 
-        assertThat(recorder.names()).containsExactly("paid");
+        assertThat(recorder.names()).containsExactly("paid", "shipped");
         EventTestSupport.commitTransaction();
-        assertThat(recorder.names()).containsExactly("paid", "after-commit");
+        assertThat(recorder.names()).containsExactly("paid", "shipped", "after-commit", "after-commit-shipped");
+        assertThat(aggregate.domainEvents()).isEmpty();
+    }
+
+    /** 事务内投递失败后不得残留提交回调：先 IN_TRANSACTION、再登记 AFTER_COMMIT 的顺序保证"半程失败"不留下提交后副作用。 */
+    @Test
+    void should_not_leave_after_commit_hook_when_in_transaction_listener_fails() {
+        EventFixtures.EventRecorder recorder = new EventFixtures.EventRecorder();
+        StaticListableBeanFactory beanFactory = new StaticListableBeanFactory();
+        beanFactory.addBean("explodingListenerBean", new FailingListeners.ExplodingListenerBean());
+        beanFactory.addBean("defaultStageListenerBean", new EventFixtures.DefaultStageListenerBean(recorder));
+        AggregateFixtures.OrderAggregate aggregate = new AggregateFixtures.OrderAggregate("o-1");
+        aggregate.pay();
+
+        EventTestSupport.beginTransaction();
+        assertThatThrownBy(() -> publisherOf(beanFactory).publish(aggregate))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("boom-in-tx");
+
+        EventTestSupport.commitTransaction();
+        assertThat(recorder.names()).isEmpty();
     }
 
     private static DomainEventPublisher publisherOf(StaticListableBeanFactory beanFactory) {
