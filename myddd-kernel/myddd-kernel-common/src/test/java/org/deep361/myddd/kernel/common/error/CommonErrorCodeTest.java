@@ -92,12 +92,20 @@ class CommonErrorCodeTest {
     void should_format_illegal_state_message_with_args() {
         assertThat(CommonErrorCode.ILLEGAL_STATE.formatDefaultMessage("待支付", "PAY"))
                 .isEqualTo("当前状态 待支付 不允许执行操作 PAY");
+        assertThat(CommonErrorCode.ILLEGAL_STATE.formatDefaultMessage("待支付"))
+                .isEqualTo("当前状态 待支付 不允许执行操作 {}");
     }
 
     @Test
     void should_expose_conflict_codes_used_by_kernel_ports() {
+        assertThat(CommonErrorCode.ILLEGAL_STATE.code()).isEqualTo("MYDDD_40902");
+        assertThat(CommonErrorCode.ILLEGAL_STATE.messageKey()).isEqualTo("myddd.error.illegal-state");
+        assertThat(CommonErrorCode.LOCK_ACQUIRE_FAILED.code()).isEqualTo("MYDDD_40903");
+        assertThat(CommonErrorCode.LOCK_ACQUIRE_FAILED.messageKey()).isEqualTo("myddd.error.lock-acquire-failed");
         assertThat(CommonErrorCode.LOCK_ACQUIRE_FAILED.httpStatus()).isEqualTo(409);
         assertThat(CommonErrorCode.LOCK_ACQUIRE_FAILED.defaultMessage()).isEqualTo("资源正在处理中，请稍后重试");
+        assertThat(CommonErrorCode.IDEMPOTENT_CONFLICT.code()).isEqualTo("MYDDD_40904");
+        assertThat(CommonErrorCode.IDEMPOTENT_CONFLICT.messageKey()).isEqualTo("myddd.error.idempotent-conflict");
         assertThat(CommonErrorCode.IDEMPOTENT_CONFLICT.httpStatus()).isEqualTo(409);
         assertThat(CommonErrorCode.IDEMPOTENT_CONFLICT.defaultMessage()).isEqualTo("重复请求，请勿重复提交");
     }
