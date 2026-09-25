@@ -129,6 +129,25 @@ class DomainEventPublisherTest {
     }
 
     @Test
+    void should_propagate_publish_failure_and_keep_undelivered_events_out() {
+        Order order = new Order(7L);
+        order.pay();
+        order.ship();
+        DomainEventPublisher failing = new DomainEventPublisher() {
+            @Override
+            public void publish(DomainEvent event, String aggregateType, String aggregateId) {
+                throw new IllegalStateException("投递失败");
+            }
+        };
+
+        assertThatThrownBy(() -> failing.publish(order))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("投递失败");
+        // 事件已被 drain：契约是"异常上抛、不承诺失败重放"，不得被吞成静默成功
+        assertThat(order.domainEvents()).isEmpty();
+    }
+
+    @Test
     void primitive_publish_should_be_the_only_abstract_method() throws Exception {
         Method primitive = DomainEventPublisher.class.getMethod(
                 "publish", DomainEvent.class, String.class, String.class);

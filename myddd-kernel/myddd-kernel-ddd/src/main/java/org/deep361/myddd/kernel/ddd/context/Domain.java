@@ -7,7 +7,10 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * 领域模块声明：标注在领域模块的入口类（或 {@code package-info}）上，供领域装配模块发现并装载模块（Task 12）。
+ * 领域模块声明：标注在领域模块的入口类上（{@link ElementType#TYPE}），供领域装配模块发现并装载模块（Task 12）。
+ *
+ * <p>不支持 {@code package-info} 载体：包级标注需要 {@link ElementType#PACKAGE}，会让装配层出现两种承载方式；
+ * 模块名与扫描包统一在类型上声明。
  *
  * <p>一个应用可以有多个领域模块；模块名在应用内唯一，重复即启动失败。
  *

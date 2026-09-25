@@ -37,4 +37,9 @@ class DomainAnnotationTest {
         assertThat(Domain.class.getAnnotation(Retention.class).value()).isEqualTo(RetentionPolicy.RUNTIME);
         assertThat(Domain.class.getAnnotation(Target.class).value()).containsExactly(ElementType.TYPE);
     }
+
+    @Test
+    void value_should_be_required_without_default() throws Exception {
+        assertThat(Domain.class.getDeclaredMethod("value").getDefaultValue()).isNull();
+    }
 }

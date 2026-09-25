@@ -86,6 +86,9 @@ public abstract class AggregateRoot<ID> extends Entity<ID> {
      * 本方法是它与 {@link #domainEvents()} 的组合；两者都保留，各有用途。
      *
      * <p>返回列表不可修改；空集合由 JDK 复用同一个不可变空列表实例。
+     *
+     * <p><b>线程约束</b>：本方法不保证原子性——"取快照—清空"之间存在窗口，多线程共享聚合时窗口内
+     * 由 {@link #registerEvent(DomainEvent)} 登记的事件会被清空丢弃（类级线程约束见本类 javadoc）。
      */
     public List<DomainEvent> drainEvents() {
         List<DomainEvent> drained = List.copyOf(domainEvents);

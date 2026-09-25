@@ -134,4 +134,17 @@ class AggregateRootDrainEventsTest {
 
         assertThat(order.drainEvents()).hasSize(2);
     }
+
+    @Test
+    void drain_should_preserve_registration_order_when_sequence_is_not_palindromic() {
+        Order order = new Order(1L);
+        order.pay();
+        order.ship();
+
+        List<DomainEvent> drained = order.drainEvents();
+
+        assertThat(drained).hasSize(2);
+        assertThat(drained.get(0)).isInstanceOf(PaidEvent.class);
+        assertThat(drained.get(1)).isInstanceOf(ShippedEvent.class);
+    }
 }
