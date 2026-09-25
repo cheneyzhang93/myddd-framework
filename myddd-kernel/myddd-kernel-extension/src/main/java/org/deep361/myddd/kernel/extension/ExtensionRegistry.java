@@ -18,6 +18,9 @@ import java.util.Set;
  * {@link #findExtension(Class, String)} 与 {@link #getExtensionList(Class, String)}。
  *
  * <p>实现不可变、线程安全。
+ *
+ * @implNote 当前实现只做精确场景匹配：请求场景必须与登记场景完全一致，否则视为未找到；默认场景（{@code ""}）
+ *           兜底语义由后续的场景解析步骤交付，届时上文"退化为默认场景"的描述才随之生效。
  */
 public interface ExtensionRegistry {
 
@@ -26,7 +29,7 @@ public interface ExtensionRegistry {
      *
      * @param point    扩展点接口，须标注 {@link ExtensionPoint}，不可为 {@code null}
      * @param scenario 场景标识，{@code null} 视为非法（默认场景请传空字符串）
-     * @throws java.util.NoSuchElementException 无精确匹配且无默认实现
+     * @throws java.util.NoSuchElementException 无匹配实现（当前场景解析语义见类注释）
      */
     <T> T getExtension(Class<T> point, String scenario);
 

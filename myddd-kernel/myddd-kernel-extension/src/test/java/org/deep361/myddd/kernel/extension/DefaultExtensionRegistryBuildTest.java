@@ -105,6 +105,23 @@ class DefaultExtensionRegistryBuildTest {
     }
 
     @Test
+    void should_deduplicate_diamond_super_interfaces_when_inferring_point() {
+        // 两个分支接口都继承 RiskCheck：接口闭包两次到达同一扩展点，必须去重而不是推断出 2 个
+        DefaultExtensionRegistry registry = DefaultExtensionRegistry.builder()
+                .register(new ExtensionFixtures.DiamondRiskCheck())
+                .build();
+
+        assertThat(registry.size()).isEqualTo(1);
+        assertThat(registry.registeredExtensionPoints()).containsExactly(ExtensionFixtures.RiskCheck.class);
+        assertThat(registry.getExtension(ExtensionFixtures.RiskCheck.class, ""))
+                .isInstanceOf(ExtensionFixtures.DiamondRiskCheck.class);
+        assertThat(registry.getExtension(ExtensionFixtures.RiskCheck.class, "").check("u1")).isEqualTo("diamond:u1");
+        assertThat(registry.extensionsOf(ExtensionFixtures.RiskCheck.class))
+                .containsExactly(new ExtensionMeta(ExtensionFixtures.RiskCheck.class, "RiskCheck", "", 100,
+                        ExtensionFixtures.DiamondRiskCheck.class));
+    }
+
+    @Test
     void should_reject_point_without_extension_point_annotation() {
         assertThatThrownBy(() -> DefaultExtensionRegistry.builder()
                 .register(ExtensionFixtures.PlainService.class, "", 100, new ExtensionFixtures.PlainServiceImpl()))
@@ -139,6 +156,20 @@ class DefaultExtensionRegistryBuildTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("priority")
                 .hasMessage("priority 不能为负数：-1");
+    }
+
+    @Test
+    void should_accept_priority_zero_and_order_it_before_priority_one() {
+        DefaultExtensionRegistry registry = DefaultExtensionRegistry.builder()
+                .register(ExtensionFixtures.RiskCheck.class, "vip", 1, new ExtensionFixtures.BackupRiskCheck())
+                .register(ExtensionFixtures.RiskCheck.class, "vip", 0, new ExtensionFixtures.VipRiskCheck())
+                .build();
+
+        assertThat(registry.getExtension(ExtensionFixtures.RiskCheck.class, "vip"))
+                .isInstanceOf(ExtensionFixtures.VipRiskCheck.class);
+        assertThat(registry.getExtensionList(ExtensionFixtures.RiskCheck.class, "vip"))
+                .extracting(extension -> extension.check("u1"))
+                .containsExactly("vip:u1", "backup:u1");
     }
 
     @Test
@@ -247,5 +278,30 @@ class DefaultExtensionRegistryBuildTest {
                 .isInstanceOf(NoSuchElementException.class)
                 .hasMessageContaining("point=" + ExtensionFixtures.NotifyChannel.class.getName())
                 .hasMessageContaining("已注册场景=[]");
+    }
+
+    @Test
+    void should_list_registered_scenarios_sorted_when_nothing_matches() {
+        // 登记顺序为 vip → 默认场景，消息中必须按字符串升序输出
+        DefaultExtensionRegistry twoScenarios = DefaultExtensionRegistry.builder()
+                .register(ExtensionFixtures.RiskCheck.class, "vip", 10, new ExtensionFixtures.VipRiskCheck())
+                .register(ExtensionFixtures.RiskCheck.class, "", 100, new ExtensionFixtures.DefaultRiskCheck())
+                .build();
+
+        assertThatThrownBy(() -> twoScenarios.getExtension(ExtensionFixtures.RiskCheck.class, "unknown"))
+                .isInstanceOf(NoSuchElementException.class)
+                .hasMessage("未找到扩展点实现：point=" + ExtensionFixtures.RiskCheck.class.getName()
+                        + ", scenario=\"unknown\"，已注册场景=[, vip]");
+
+        // 两个非空场景逆序登记：输出同样按升序（alpha 先于 vip）
+        DefaultExtensionRegistry reverseRegistered = DefaultExtensionRegistry.builder()
+                .register(ExtensionFixtures.RiskCheck.class, "vip", 10, new ExtensionFixtures.VipRiskCheck())
+                .register(ExtensionFixtures.RiskCheck.class, "alpha", 100, new ExtensionFixtures.BackupRiskCheck())
+                .build();
+
+        assertThatThrownBy(() -> reverseRegistered.getExtension(ExtensionFixtures.RiskCheck.class, "unknown"))
+                .isInstanceOf(NoSuchElementException.class)
+                .hasMessage("未找到扩展点实现：point=" + ExtensionFixtures.RiskCheck.class.getName()
+                        + ", scenario=\"unknown\"，已注册场景=[alpha, vip]");
     }
 }

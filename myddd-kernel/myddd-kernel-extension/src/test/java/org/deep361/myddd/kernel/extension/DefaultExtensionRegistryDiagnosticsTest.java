@@ -49,6 +49,17 @@ class DefaultExtensionRegistryDiagnosticsTest {
     }
 
     @Test
+    void should_fall_back_to_simple_class_name_when_point_name_is_blank() {
+        DefaultExtensionRegistry registry = DefaultExtensionRegistry.builder()
+                .register(new ExtensionFixtures.WhitespacePointCheck())
+                .build();
+
+        assertThat(registry.extensionsOf(ExtensionFixtures.WhitespacePoint.class))
+                .extracting(ExtensionMeta::pointName)
+                .containsExactly("WhitespacePoint");
+    }
+
+    @Test
     void should_order_same_priority_implementations_by_implementation_class_name() {
         DefaultExtensionRegistry registry = DefaultExtensionRegistry.builder()
                 .register(ExtensionFixtures.RiskCheck.class, "tie-a", 100, new ExtensionFixtures.VipRiskCheck())

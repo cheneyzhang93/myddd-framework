@@ -16,6 +16,11 @@ final class ExtensionFixtures {
         String channel();
     }
 
+    /** 名称为空白字符的扩展点：视为"未命名"，诊断名回退为接口简单类名。 */
+    @ExtensionPoint("  ")
+    interface WhitespacePoint {
+    }
+
     /** 未标注 @ExtensionPoint 的普通接口：不能作为扩展点。 */
     interface PlainService {
     }
@@ -50,6 +55,11 @@ final class ExtensionFixtures {
         public String channel() {
             return "sms";
         }
+    }
+
+    /** 空白命名扩展点的实现：登记后其诊断名应为接口简单类名。 */
+    @Extension
+    static final class WhitespacePointCheck implements WhitespacePoint {
     }
 
     /** 同时实现两个扩展点：未显式声明 point 时无法推断，必须构建失败。 */
@@ -95,6 +105,23 @@ final class ExtensionFixtures {
         @Override
         public String check(String userId) {
             return "composite:" + userId;
+        }
+    }
+
+    /** 菱形继承左分支：接口闭包会经由此路再次到达 {@link RiskCheck}。 */
+    interface LeftCheck extends RiskCheck {
+    }
+
+    /** 菱形继承右分支：接口闭包会经由此路再次到达 {@link RiskCheck}。 */
+    interface RightCheck extends RiskCheck {
+    }
+
+    /** 实现菱形继承的两个分支：闭包必须去重，否则会误判为"实现 2 个 @ExtensionPoint 接口"。 */
+    @Extension
+    static final class DiamondRiskCheck implements LeftCheck, RightCheck {
+        @Override
+        public String check(String userId) {
+            return "diamond:" + userId;
         }
     }
 
