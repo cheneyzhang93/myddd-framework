@@ -1,2 +1,3 @@
 org.deep361.myddd.domain.autoconfigure.MydddDomainAutoConfiguration
 org.deep361.myddd.domain.autoconfigure.MydddDomainEventAutoConfiguration
+org.deep361.myddd.domain.autoconfigure.MydddOutboxAutoConfiguration

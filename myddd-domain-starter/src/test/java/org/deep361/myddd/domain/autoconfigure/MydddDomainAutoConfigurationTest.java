@@ -110,7 +110,8 @@ class MydddDomainAutoConfigurationTest {
 
         assertThat(declared).containsExactly(
                 MydddDomainAutoConfiguration.class.getName(),
-                MydddDomainEventAutoConfiguration.class.getName());
+                MydddDomainEventAutoConfiguration.class.getName(),
+                MydddOutboxAutoConfiguration.class.getName());
     }
 
     @Test

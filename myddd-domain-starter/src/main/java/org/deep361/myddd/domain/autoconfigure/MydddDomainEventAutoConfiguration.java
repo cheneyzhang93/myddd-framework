@@ -5,8 +5,10 @@ import org.deep361.myddd.domain.event.DomainEventDispatcher;
 import org.deep361.myddd.domain.event.DomainEventListenerRegistrar;
 import org.deep361.myddd.domain.event.SpringDomainEventPublisher;
 import org.deep361.myddd.domain.event.TransactionStageExecutor;
+import org.deep361.myddd.domain.outbox.OutboxRecorder;
 import org.deep361.myddd.kernel.ddd.event.DomainEventPublisher;
 import org.springframework.beans.factory.ListableBeanFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -82,7 +84,8 @@ public class MydddDomainEventAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    public DomainEventPublisher domainEventPublisher(DomainEventDispatcher dispatcher) {
-        return new SpringDomainEventPublisher(dispatcher);
+    public DomainEventPublisher domainEventPublisher(DomainEventDispatcher dispatcher,
+                                                     ObjectProvider<OutboxRecorder> outboxRecorder) {
+        return new SpringDomainEventPublisher(dispatcher, outboxRecorder.getIfAvailable());
     }
 }
