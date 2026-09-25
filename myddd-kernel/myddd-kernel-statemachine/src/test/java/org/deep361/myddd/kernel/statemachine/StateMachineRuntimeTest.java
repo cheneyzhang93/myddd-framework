@@ -1,5 +1,8 @@
 package org.deep361.myddd.kernel.statemachine;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -23,6 +26,7 @@ class StateMachineRuntimeTest {
         assertThat(machine.fire(PAY)).isEqualTo(PAID);
         assertThat(holder.get()).isEqualTo(PAID);
         assertThat(machine.currentState()).isEqualTo(PAID);
+        assertThat(machine.isTerminal()).isFalse();
     }
 
     @Test
@@ -118,12 +122,108 @@ class StateMachineRuntimeTest {
                 StateMachine.of(StateMachineFixtures.orderDefinition(), () -> CREATED, holder::set);
 
         assertThatThrownBy(() -> machine.fire(null)).isInstanceOf(NullPointerException.class)
-                .hasMessageContaining("事件");
+                .hasMessage("事件不能为 null");
         assertThatThrownBy(() -> machine.canFire(null)).isInstanceOf(NullPointerException.class)
-                .hasMessageContaining("事件");
+                .hasMessage("事件不能为 null");
         assertThatThrownBy(() -> StateMachine.of(StateMachineFixtures.orderDefinition(), holder::get, holder::set))
                 .isInstanceOf(NullPointerException.class)
-                .hasMessageContaining("当前状态");
+                .hasMessage("当前状态为 null：领域对象尚未初始化状态");
+    }
+
+    @Test
+    void should_write_state_exactly_once_on_success() {
+        List<StateMachineFixtures.OrderState> writes = new ArrayList<>();
+        StateMachineFixtures.Holder<StateMachineFixtures.OrderState> holder =
+                new StateMachineFixtures.Holder<>(CREATED);
+        StateMachine<StateMachineFixtures.OrderState, StateMachineFixtures.OrderEvent> machine =
+                StateMachine.of(StateMachineFixtures.orderDefinition(), holder::get, state -> {
+                    holder.set(state);
+                    writes.add(state);
+                });
+
+        machine.fire(PAY);
+
+        assertThat(writes).containsExactly(PAID);
+    }
+
+    @Test
+    void should_not_write_state_on_either_rejection_path() {
+        List<StateMachineFixtures.OrderState> writes = new ArrayList<>();
+        StateMachineFixtures.Holder<StateMachineFixtures.OrderState> holder =
+                new StateMachineFixtures.Holder<>(CREATED);
+        StateMachine<StateMachineFixtures.OrderState, StateMachineFixtures.OrderEvent> orderMachine =
+                StateMachine.of(StateMachineFixtures.orderDefinition(), holder::get, state -> {
+                    holder.set(state);
+                    writes.add(state);
+                });
+        StateMachine<StateMachineFixtures.OrderState, StateMachineFixtures.OrderEvent> guardedMachine =
+                StateMachine.of(StateMachineFixtures.neverGuardDefinition(), holder::get, state -> {
+                    holder.set(state);
+                    writes.add(state);
+                });
+
+        assertThatThrownBy(() -> orderMachine.fire(SHIP)).isInstanceOf(StateMachineException.class);
+        assertThatThrownBy(() -> guardedMachine.fire(PAY)).isInstanceOf(StateMachineException.class);
+
+        assertThat(writes).isEmpty();
+        assertThat(holder.get()).isEqualTo(CREATED);
+    }
+
+    @Test
+    void should_expose_from_event_and_target_to_guard_on_probe_and_fire() {
+        List<TransitionContext<StateMachineFixtures.OrderState, StateMachineFixtures.OrderEvent>> observed =
+                new ArrayList<>();
+        StateMachineDefinition<StateMachineFixtures.OrderState, StateMachineFixtures.OrderEvent> definition =
+                StateMachineDefinition.<StateMachineFixtures.OrderState, StateMachineFixtures.OrderEvent>builder("observed")
+                        .initial(CREATED)
+                        .transition(CREATED, PAY, PAID, context -> {
+                            observed.add(context);
+                            return true;
+                        })
+                        .transition(PAID, SHIP, SHIPPED, context -> {
+                            observed.add(context);
+                            return true;
+                        })
+                        .terminal(SHIPPED)
+                        .build();
+        StateMachineFixtures.Holder<StateMachineFixtures.OrderState> holder =
+                new StateMachineFixtures.Holder<>(CREATED);
+        StateMachine<StateMachineFixtures.OrderState, StateMachineFixtures.OrderEvent> machine =
+                StateMachine.of(definition, holder::get, holder::set);
+
+        assertThat(machine.canFire(PAY)).isTrue();
+        assertThat(observed).containsExactly(new TransitionContext<>(CREATED, PAY, PAID));
+        observed.clear();
+
+        machine.fire(PAY);
+        assertThat(observed).containsExactly(new TransitionContext<>(CREATED, PAY, PAID));
+        observed.clear();
+
+        assertThat(machine.canFire(SHIP)).isTrue();
+        observed.clear();
+
+        machine.fire(SHIP);
+        assertThat(observed).containsExactly(new TransitionContext<>(PAID, SHIP, SHIPPED));
+        assertThat(holder.get()).isEqualTo(SHIPPED);
+    }
+
+    @Test
+    void should_reject_state_that_becomes_null_after_binding() {
+        StateMachineFixtures.Holder<StateMachineFixtures.OrderState> holder =
+                new StateMachineFixtures.Holder<>(CREATED);
+        StateMachine<StateMachineFixtures.OrderState, StateMachineFixtures.OrderEvent> machine =
+                StateMachine.of(StateMachineFixtures.orderDefinition(), holder::get, holder::set);
+        holder.set(null);
+
+        assertThatThrownBy(machine::currentState)
+                .isInstanceOf(NullPointerException.class)
+                .hasMessage("当前状态为 null：领域对象尚未初始化状态");
+        assertThatThrownBy(() -> machine.canFire(PAY))
+                .isInstanceOf(NullPointerException.class)
+                .hasMessage("当前状态为 null：领域对象尚未初始化状态");
+        assertThatThrownBy(() -> machine.fire(PAY))
+                .isInstanceOf(NullPointerException.class)
+                .hasMessage("当前状态为 null：领域对象尚未初始化状态");
     }
 
     @Test
@@ -151,10 +251,13 @@ class StateMachineRuntimeTest {
     @Test
     void should_reject_null_collaborators() {
         assertThatThrownBy(() -> StateMachine.of(null, () -> CREATED, state -> {
-        })).isInstanceOf(NullPointerException.class);
+        })).isInstanceOf(NullPointerException.class)
+                .hasMessage("definition 不能为 null");
         assertThatThrownBy(() -> StateMachine.of(StateMachineFixtures.orderDefinition(), null, state -> {
-        })).isInstanceOf(NullPointerException.class);
+        })).isInstanceOf(NullPointerException.class)
+                .hasMessage("currentState 不能为 null");
         assertThatThrownBy(() -> StateMachine.of(StateMachineFixtures.orderDefinition(), () -> CREATED, null))
-                .isInstanceOf(NullPointerException.class);
+                .isInstanceOf(NullPointerException.class)
+                .hasMessage("stateWriter 不能为 null");
     }
 }
