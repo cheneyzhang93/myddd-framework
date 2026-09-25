@@ -68,9 +68,28 @@ public abstract class AggregateRoot<ID> extends Entity<ID> {
      * <p><b>发布器契约</b>：本方法为无差别清空，故发布器必须先取一次快照（{@link #domainEvents()}）、
      * 以该快照为准完成发布后再调用本方法；发布期间不应再次登记事件——若监听器在"取快照—清空"之间
      * 回调 {@link #registerEvent(DomainEvent)}，这些新事件会随清空一并丢弃。需要"发布期间新产生的事件
-     * 继续投递"时，由发布器循环"取快照—发布—清空"直至聚合无事件（领域装配模块，Plan 2 落地定义语义）。
+     * 继续投递"时，由发布器循环"取快照—发布—清空"直至聚合无事件（见 {@link #drainEvents()} 与 {@link org.deep361.myddd.kernel.ddd.event.DomainEventPublisher#publish(AggregateRoot)}）。
      */
     public void clearDomainEvents() {
         domainEvents.clear();
+    }
+
+    /**
+     * 取出并清空当前收集的领域事件：返回<b>调用时刻的不可变快照</b>（{@code List.copyOf}，按登记顺序），
+     * 同时清空聚合内的事件——把"取快照 + 清空"合成一次动作，避免调用方漏掉清空导致事件被重复投递。
+     *
+     * <p><b>失败语义</b>：本方法不承诺"失败重放"——返回的事件若在投递时抛异常，聚合不会把它们收回。需要"不丢"
+     * 的可靠投递走同一事务内的 Outbox 记录（事务回滚时，产生事件的状态变更也一并回滚，下一请求会基于未变更的
+     * 状态重新产生事件）。
+     *
+     * <p>与 {@link #clearDomainEvents()} 的关系：后者是无差别清空（供"先取快照、发布成功后再清空"的两段式使用），
+     * 本方法是它与 {@link #domainEvents()} 的组合；两者都保留，各有用途。
+     *
+     * <p>返回列表不可修改；空集合由 JDK 复用同一个不可变空列表实例。
+     */
+    public List<DomainEvent> drainEvents() {
+        List<DomainEvent> drained = List.copyOf(domainEvents);
+        domainEvents.clear();
+        return drained;
     }
 }
