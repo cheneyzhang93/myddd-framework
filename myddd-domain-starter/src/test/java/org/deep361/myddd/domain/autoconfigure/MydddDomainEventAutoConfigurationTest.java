@@ -194,6 +194,19 @@ class MydddDomainEventAutoConfigurationTest {
                     }
                     assertThat(listener.started.await(5, TimeUnit.SECONDS)).isTrue();
 
+                    // 在飞任务被闩锁挡住，唯一放行者是 500ms 后的本线程：close() 不等待就观察不到 finished=true
+                    Thread releaser = new Thread(() -> {
+                        try {
+                            Thread.sleep(500);
+                        } catch (InterruptedException ex) {
+                            Thread.currentThread().interrupt();
+                            return;
+                        }
+                        listener.release();
+                    }, "cfg06-releaser");
+                    releaser.setDaemon(true);
+                    releaser.start();
+
                     context.close();
 
                     assertThat(listener.finished()).as("close() 必须等待在飞异步监听器结束").isTrue();

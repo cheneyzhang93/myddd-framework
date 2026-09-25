@@ -182,6 +182,22 @@ class DomainEventListenerRegistrarTest {
     }
 
     @Test
+    void should_order_same_name_overloads_across_hierarchy_by_signature() throws Throwable {
+        EventFixtures.EventRecorder recorder = new EventFixtures.EventRecorder();
+        StaticListableBeanFactory beanFactory = new StaticListableBeanFactory();
+        beanFactory.addBean("overloadListenerBean", new EventFixtures.OverloadListenerBean(recorder));
+
+        List<RegisteredListener> listeners = EventTestSupport.freeze(beanFactory).listeners();
+
+        assertThat(listeners).extracting(listener -> listener.method().toGenericString()).hasSize(2);
+        assertThat(listeners).extracting(listener -> listener.method().getParameterTypes()[0].getSimpleName())
+                .containsExactly("OrderPaidEvent", "DomainEvent");
+        listeners.get(0).invoke(paidEvent());
+        listeners.get(1).invoke(paidEvent());
+        assertThat(recorder.names()).containsExactly("base-paid", "sub-any");
+    }
+
+    @Test
     void should_fail_when_listener_bean_is_outside_modules() {
         StaticListableBeanFactory beanFactory = new StaticListableBeanFactory();
         beanFactory.addBean("orphanListenerBean", new OrphanListenerBean());

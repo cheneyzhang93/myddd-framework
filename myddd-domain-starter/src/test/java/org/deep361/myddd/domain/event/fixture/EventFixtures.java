@@ -171,12 +171,18 @@ public final class EventFixtures {
         }
     }
 
-    /** 异步慢监听器：在工作线程里停留一段可观测时间（关闭时等待在飞任务的断言用）。 */
+    /**
+     * 异步慢监听器：卡在放行闩锁上，直到测试线程显式 {@link #release()}（关闭时"是否等待在飞任务"的断言用）。
+     *
+     * <p>被中断（{@code shutdownNow()}）时不标记完成——"完成"只可能来自放行后的正常路径，
+     * 因此 {@link #finished()} 能区分"等待在飞任务"与"直接中断丢弃"。
+     */
     public static class SlowAsyncListenerBean {
 
         /** 工作线程已开始执行本监听器。 */
         public final CountDownLatch started = new CountDownLatch(1);
 
+        private final CountDownLatch release = new CountDownLatch(1);
         private final EventRecorder recorder;
         private final AtomicBoolean finished = new AtomicBoolean();
 
@@ -188,13 +194,17 @@ public final class EventFixtures {
         public void on(OrderPaidEvent event) {
             started.countDown();
             try {
-                Thread.sleep(300);
+                release.await();
             } catch (InterruptedException ex) {
                 Thread.currentThread().interrupt();
                 return;
             }
             finished.set(true);
             recorder.record("slow", event);
+        }
+
+        public void release() {
+            release.countDown();
         }
 
         public boolean finished() {
@@ -232,6 +242,37 @@ public final class EventFixtures {
         @DomainEventListener(stage = DomainEventStage.IN_TRANSACTION, order = 7)
         public void alpha(OrderPaidEvent event) {
             recorder.record("alpha", event);
+        }
+    }
+
+    /** 跨继承层重载的基类：声明 {@code on(OrderPaidEvent)}。 */
+    public static class BaseOverloadListenerBean {
+
+        protected final EventRecorder recorder;
+
+        public BaseOverloadListenerBean(EventRecorder recorder) {
+            this.recorder = recorder;
+        }
+
+        @DomainEventListener(stage = DomainEventStage.IN_TRANSACTION, order = 9)
+        public void on(OrderPaidEvent event) {
+            recorder.record("base-paid", event);
+        }
+    }
+
+    /**
+     * 子类新增同名重载 {@code on(DomainEvent)}：同名同 order 下收集顺序是 子类 → 基类，
+     * 与签名升序（声明类名 Base… &lt; Overload…）相反，故只有按签名排序才能得到稳定顺序。
+     */
+    public static class OverloadListenerBean extends BaseOverloadListenerBean {
+
+        public OverloadListenerBean(EventRecorder recorder) {
+            super(recorder);
+        }
+
+        @DomainEventListener(stage = DomainEventStage.IN_TRANSACTION, order = 9)
+        public void on(DomainEvent event) {
+            recorder.record("sub-any", event);
         }
     }
 

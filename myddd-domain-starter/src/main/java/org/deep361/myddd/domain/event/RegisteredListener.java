@@ -30,10 +30,13 @@ record RegisteredListener(DomainEventStage stage, boolean async, int order, Stri
 
     /**
      * 调用监听方法。方法在目标类上解析（接口/基类上声明的注解解析到最具体的实现），
-     * 不可访问时抛 {@link IllegalStateException}。
+     * 私有方法不可访问时抛 {@link IllegalStateException}。
      */
     void invoke(Object event) throws Throwable {
-        Method invocable = resolveInvocableMethod();
+        Method invocable = AopUtils.selectInvocableMethod(method, AopUtils.getTargetClass(bean));
+        if (invocable == null) {
+            invocable = method;
+        }
         ReflectionUtils.makeAccessible(invocable);
         try {
             invocable.invoke(bean, event);
@@ -42,22 +45,6 @@ record RegisteredListener(DomainEventStage stage, boolean async, int order, Stri
         } catch (IllegalAccessException ex) {
             throw new IllegalStateException("监听器方法不可访问：" + describe(), ex);
         }
-    }
-
-    /**
-     * 解析出可在 bean 实例上直接调用的方法：目标类上的方法优先；JDK 动态代理只实现接口，目标类方法在代理
-     * 实例上不可调用，此时按同一签名在 bean 运行时类型上重找（落到接口方法，由代理转发给目标）。
-     */
-    private Method resolveInvocableMethod() {
-        Method invocable = AopUtils.selectInvocableMethod(method, AopUtils.getTargetClass(bean));
-        if (invocable != null && invocable.getDeclaringClass().isInstance(bean)) {
-            return invocable;
-        }
-        Method onRuntimeType = ReflectionUtils.findMethod(bean.getClass(), method.getName(), method.getParameterTypes());
-        if (onRuntimeType != null) {
-            return onRuntimeType;
-        }
-        return invocable != null ? invocable : method;
     }
 
     /** 诊断名：{@code beanName#methodName}。 */
