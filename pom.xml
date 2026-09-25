@@ -18,6 +18,7 @@
         <module>myddd-kernel/myddd-kernel-common</module>
         <module>myddd-kernel/myddd-kernel-ddd</module>
         <module>myddd-domain-starter</module>
+        <module>myddd-adapters/myddd-archunit</module>
         <module>myddd-kernel/myddd-kernel-port</module>
         <module>myddd-kernel/myddd-kernel-extension</module>
         <module>myddd-kernel/myddd-kernel-statemachine</module>
@@ -42,6 +43,8 @@
         <redisson.version>4.7.0</redisson.version>
         <springdoc.version>3.1.1</springdoc.version>
         <mapstruct.version>1.6.3</mapstruct.version>
+        <!-- ArchUnit：Boot BOM 不管理，自钉；规则库与业务工程必须同版本，否则切片/包匹配语义会漂移 -->
+        <archunit.version>1.5.0</archunit.version>
 
         <!-- ===== devbox 本地环境镜像（唯一真源，test-starter 资源过滤消费；Plan 3 核验后定稿） ===== -->
         <myddd.devbox.image.mysql>mysql:8.4</myddd.devbox.image.mysql>
@@ -160,6 +163,11 @@
                 <groupId>org.mapstruct</groupId>
                 <artifactId>mapstruct-processor</artifactId>
                 <version>${mapstruct.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.tngtech.archunit</groupId>
+                <artifactId>archunit</artifactId>
+                <version>${archunit.version}</version>
             </dependency>
 
             <!-- 本项目模块（版本随手父 POM，业务工程 import BOM 后无需写版本） -->
