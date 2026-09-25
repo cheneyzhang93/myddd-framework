@@ -20,6 +20,7 @@
         <module>myddd-kernel/myddd-kernel-port</module>
         <module>myddd-kernel/myddd-kernel-extension</module>
         <module>myddd-kernel/myddd-kernel-statemachine</module>
+        <module>myddd-kernel/myddd-kernel-rule</module>
     </modules>
 
     <properties>
