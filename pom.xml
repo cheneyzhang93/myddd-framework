@@ -17,6 +17,7 @@
         <module>myddd-dependencies</module>
         <module>myddd-kernel/myddd-kernel-common</module>
         <module>myddd-kernel/myddd-kernel-ddd</module>
+        <module>myddd-kernel/myddd-kernel-port</module>
     </modules>
 
     <properties>
@@ -166,6 +167,36 @@
             <dependency>
                 <groupId>org.deep361.myddd</groupId>
                 <artifactId>myddd-kernel-ddd</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.deep361.myddd</groupId>
+                <artifactId>myddd-kernel-port</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.deep361.myddd</groupId>
+                <artifactId>myddd-kernel-extension</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.deep361.myddd</groupId>
+                <artifactId>myddd-kernel-statemachine</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.deep361.myddd</groupId>
+                <artifactId>myddd-kernel-rule</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.deep361.myddd</groupId>
+                <artifactId>myddd-domain-starter</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.deep361.myddd</groupId>
+                <artifactId>myddd-archunit</artifactId>
                 <version>${project.version}</version>
             </dependency>
         </dependencies>
