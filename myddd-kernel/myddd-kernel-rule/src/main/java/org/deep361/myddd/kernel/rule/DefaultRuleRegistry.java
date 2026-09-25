@@ -74,7 +74,8 @@ public final class DefaultRuleRegistry implements RuleRegistry {
          * 注册规则包。
          *
          * @throws NullPointerException  规则包为 {@code null}
-         * @throws IllegalStateException 包名重复（同名包会让"按名查找"失去确定性）
+         * @throws IllegalStateException 包名重复（同名包会让"按名查找"失去确定性；抛错时
+         *                               <b>保留首次注册的包</b>，builder 仍可继续注册与构建）
          */
         public Builder register(RulePackage<?> rulePackage) {
             Objects.requireNonNull(rulePackage, "规则包不能为 null");

@@ -10,7 +10,8 @@ import java.util.Set;
  * 取错出参类型会在 {@code apply} 的结果处抛 {@link ClassCastException}。规则包名与出参类型的对应关系属业务约定，
  * 建议在常量类中集中声明包名。
  *
- * <p>实现不可变、线程安全。
+ * <p>实现不可变、线程安全；{@link DefaultRuleRegistry.Builder} 是构建期对象，不承诺线程安全
+ * （装配阶段单线程使用，装配完成后只共享注册表本身）。
  */
 public interface RuleRegistry {
 
@@ -24,7 +25,12 @@ public interface RuleRegistry {
      */
     <O> RulePackage<O> get(String name);
 
-    /** 在指定规则包上执行匹配；包未注册返回空（与"包存在但无规则适用"同语义，均为空结果）。 */
+    /**
+     * 在指定规则包上执行匹配；包未注册返回空（与"包存在但无规则适用"同语义，均为空结果——
+     * 需要区分二者时先用 {@link #get(String)} 前置校验）。
+     *
+     * <p>与 {@link #get(String)} 同样的泛型约束：出参类型声明错会在消费结果处抛 {@link ClassCastException}。
+     */
     <O> Optional<O> apply(String packageName, RuleMatch match);
 
     /** 已注册的规则包名，按登记顺序。 */
