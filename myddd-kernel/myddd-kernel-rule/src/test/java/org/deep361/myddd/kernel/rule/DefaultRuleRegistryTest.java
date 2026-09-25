@@ -183,13 +183,17 @@ class DefaultRuleRegistryTest {
         assertThatThrownBy(() -> builder.register(second))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("规则包名重复：discount");
-        assertThatThrownBy(() -> builder.register(first))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessage("规则包名重复：discount");
 
+        // 留存断言必须先于"同一实例再注册"：后者会（在覆盖写实现下）把 map 修回 first，从而掩盖覆盖写
         DefaultRuleRegistry registry = builder.build();
         assertThat(registry.size()).isEqualTo(1);
         assertThat(registry.<BigDecimal>get("discount")).isSameAs(first);
+
+        assertThatThrownBy(() -> builder.register(first))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("规则包名重复：discount");
+        assertThat(builder.build().<BigDecimal>get("discount")).isSameAs(first);
+        assertThat(builder.build().size()).isEqualTo(1);
     }
 
     @Test
