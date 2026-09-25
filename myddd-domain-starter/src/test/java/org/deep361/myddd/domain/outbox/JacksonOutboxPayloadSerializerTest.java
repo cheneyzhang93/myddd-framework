@@ -72,7 +72,11 @@ class JacksonOutboxPayloadSerializerTest {
         assertThat(back.orderId()).isEqualTo("o-2");
         assertThat(back.points()).isEqualTo(45);
         assertThat(back.eventId()).isNotEqualTo(original.eventId());
-        assertThat(back.occurredAt()).isNotEqualTo(original.occurredAt());
+        // 禁止比较两次 now()：粗粒度时钟下同一时刻的 Instant 会相等；改为钉住"被植入的旧时间戳被忽略并重生成"
+        OutboxPayloadFixtures.PointsGrantedEvent planted = serializer.deserialize(
+                "{\"orderId\":\"o-2\",\"points\":45,\"occurredAt\":\"2000-01-01T00:00:00Z\"}",
+                OutboxPayloadFixtures.PointsGrantedEvent.class);
+        assertThat(planted.occurredAt()).isAfter(Instant.parse("2020-01-01T00:00:00Z"));
     }
 
     @Test
@@ -113,6 +117,24 @@ class JacksonOutboxPayloadSerializerTest {
                 "{\"eventId\":\"e-1\",", OutboxPayloadFixtures.OrderPaidEvent.class))
                 .isInstanceOf(FrameworkException.class)
                 .hasMessageContaining(OutboxPayloadFixtures.OrderPaidEvent.class.getName())
+                .hasCauseInstanceOf(JacksonException.class);
+    }
+
+    @Test
+    void should_reject_payload_missing_primitive_property() {
+        // 裁定：缺失原始类型属性不静默补默认值；"新增原始类型组件"是破坏性变更，只有"未知字段"方向被容忍
+        assertThatThrownBy(() -> serializer.deserialize(
+                "{\"orderId\":\"o-6\"}", OutboxPayloadFixtures.PointsGrantedEvent.class))
+                .isInstanceOf(FrameworkException.class)
+                .hasMessageContaining(OutboxPayloadFixtures.PointsGrantedEvent.class.getName())
+                .hasCauseInstanceOf(JacksonException.class);
+    }
+
+    @Test
+    void should_wrap_serialization_failure_in_framework_exception() {
+        assertThatThrownBy(() -> serializer.serialize(new OutboxPayloadFixtures.ExplodingAccessorEvent()))
+                .isInstanceOf(FrameworkException.class)
+                .hasMessageContaining(OutboxPayloadFixtures.ExplodingAccessorEvent.class.getName())
                 .hasCauseInstanceOf(JacksonException.class);
     }
 

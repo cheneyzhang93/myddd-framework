@@ -22,7 +22,9 @@ import java.util.Objects;
  *   <li>{@link DateTimeFeature#WRITE_DATES_AS_TIMESTAMPS} 显式关闭：{@code Instant} 写 ISO-8601 文本
  *       （Jackson 3 默认即如此，这里显式声明以锁定线上格式，不随上游默认值漂移）；</li>
  *   <li>{@link DeserializationFeature#FAIL_ON_UNKNOWN_PROPERTIES} 显式关闭：消费端容忍未知字段，
- *       支持"新生产者 + 旧消费者"滚动升级。</li>
+ *       支持"新生产者 + 旧消费者"滚动升级；</li>
+ *   <li>{@link DeserializationFeature#FAIL_ON_NULL_FOR_PRIMITIVES} 保持 Jackson 默认的启用状态：缺失原始类型
+ *       属性不静默补默认值；"新增原始类型组件"是破坏性变更，只有"未知字段"方向被容忍。</li>
  * </ul>
  *
  * <p><b>线程安全</b>：{@link ObjectMapper} 本身线程安全，本类无可变状态。

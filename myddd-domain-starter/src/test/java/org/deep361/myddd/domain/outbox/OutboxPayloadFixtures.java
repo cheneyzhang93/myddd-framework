@@ -115,6 +115,18 @@ public final class OutboxPayloadFixtures {
         }
     }
 
+    /** 序列化期访问器抛异常的事件：Jackson 会把 getter 的 RuntimeException 包成 {@code JacksonException}。 */
+    public static final class ExplodingAccessorEvent extends AbstractDomainEvent {
+
+        public String orderId() {
+            return "o-8";
+        }
+
+        public String boom() {
+            throw new IllegalStateException("boom-serialize");
+        }
+    }
+
     /** 构造器歧义事件：两个非默认构造器（2 参 + 1 参）——反序列化必失败。 */
     public static final class AmbiguousEvent implements DomainEvent {
 

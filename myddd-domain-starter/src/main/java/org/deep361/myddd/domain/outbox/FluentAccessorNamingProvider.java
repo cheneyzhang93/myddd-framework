@@ -18,6 +18,9 @@ import java.util.Set;
  * 会变成空对象。本 Provider 在标准命名之外补一条兜底规则：<b>无参、非 void、非 static、非 {@code Object}
  * 方法名、且不是标准 Bean 形态的方法名即属性名</b>。
  *
+ * <p><b>守卫可达性</b>：下文的参数个数 / void 返回 / static 三条守卫在 Jackson 3.1.5 下<b>不可达</b>——上游
+ * 的访问器预筛已先滤掉这些方法；保留它们作为防御（完整表达规则集，并抵御上游预筛变更），线上行为由测试钉住。
+ *
  * <p><b>规则边界</b>（每条都有测试）：
  * <ul>
  *   <li>{@code getXxx()} / {@code isXxx()} 仍走 Jackson 标准命名：{@code getURL()} → {@code URL}、

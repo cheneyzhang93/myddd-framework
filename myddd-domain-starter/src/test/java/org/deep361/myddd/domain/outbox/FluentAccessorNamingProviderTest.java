@@ -63,6 +63,10 @@ class FluentAccessorNamingProviderTest {
             return "2";
         }
 
+        public String get_value() {
+            return "v";
+        }
+
         public String isActive() {
             return "a";
         }
@@ -155,8 +159,9 @@ class FluentAccessorNamingProviderTest {
         Map<String, Object> json = mapper.readValue(
                 mapper.writeValueAsString(new FancyBean("o-1", "http://x", false)), JSON_OBJECT);
 
+        // staticNoise / touch / withArg 由 Jackson 的访问器预筛挡掉（非本 Provider 三条守卫的覆盖），此处一并钉住
         assertThat(json).doesNotContainKeys("toString", "hashCode", "staticNoise", "touch", "withArg",
-                "get2", "isActive", "getaway");
+                "get2", "isActive", "getaway", "get_value");
     }
 
     @Test
