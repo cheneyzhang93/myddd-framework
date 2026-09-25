@@ -23,7 +23,13 @@ public @interface RateLimit {
     /** 每秒许可数；{@code 0} 表示由外部配置决定（Sentinel 控制台 / Resilience4j 配置）。 */
     int permits() default 0;
 
-    /** 获取许可的最长等待毫秒数；{@code 0} 表示不等待（获取不到立即失败）。 */
+    /**
+     * 获取许可的最长等待毫秒数；{@code 0} 表示不等待（获取不到立即失败）。
+     *
+     * <p>等待由适配器切面在端口之上实现（Plan 4：在时间预算内重试 {@link RateLimitPort#tryAcquire}），
+     * 端口本身保持非阻塞——这样 sentinel 与 resilience4j 两套适配器语义一致（Sentinel 的流控无
+     * 逐次调用的等待预算，其排队由规则侧的 maxQueueingTimeMs 决定）。
+     */
     long timeout() default 0;
 
     /** 限流提示文案；留空表示使用统一错误码文案。 */

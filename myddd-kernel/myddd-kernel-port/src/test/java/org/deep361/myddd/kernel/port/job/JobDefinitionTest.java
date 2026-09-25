@@ -30,15 +30,15 @@ class JobDefinitionTest {
     void should_reject_blank_name_or_cron() {
         assertThatThrownBy(() -> JobDefinition.of(null, "0 0 2 * * ?"))
                 .isInstanceOf(NullPointerException.class)
-                .hasMessageContaining("name");
+                .hasMessage("name 不能为 null");
         assertThatThrownBy(() -> JobDefinition.of(" ", "0 0 2 * * ?"))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("name");
+                .hasMessage("name 不能为空白");
         assertThatThrownBy(() -> JobDefinition.of("j", null))
                 .isInstanceOf(NullPointerException.class)
-                .hasMessageContaining("cron");
+                .hasMessage("cron 不能为 null");
         assertThatThrownBy(() -> JobDefinition.of("j", "  "))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("cron");
+                .hasMessage("cron 不能为空白");
     }
 }

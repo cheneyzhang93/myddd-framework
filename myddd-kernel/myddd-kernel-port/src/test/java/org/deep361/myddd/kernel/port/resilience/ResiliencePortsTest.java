@@ -19,11 +19,14 @@ class ResiliencePortsTest {
 
     static final class RecordingCircuitBreakerPort implements CircuitBreakerPort {
         final List<String> resources = new ArrayList<>();
+        final List<Object> results = new ArrayList<>();
 
         @Override
         public <T> T execute(String resource, java.util.function.Supplier<T> action) {
             resources.add(resource);
-            return action.get();
+            T result = action.get();
+            results.add(result);
+            return result;
         }
     }
 
@@ -45,11 +48,22 @@ class ResiliencePortsTest {
     @Test
     void circuit_breaker_run_should_delegate_to_execute_and_tolerate_null_result() {
         RecordingCircuitBreakerPort port = new RecordingCircuitBreakerPort();
+        List<String> executed = new ArrayList<>();
 
-        port.run("payment:pay", () -> {
-        });
+        port.run("payment:pay", () -> executed.add("ran"));
 
+        assertThat(executed).containsExactly("ran");
         assertThat(port.resources).containsExactly("payment:pay");
+        assertThat(port.results).containsExactly((Object) null);
+    }
+
+    @Test
+    void circuit_breaker_run_should_propagate_action_failure() {
+        RecordingCircuitBreakerPort port = new RecordingCircuitBreakerPort();
+
+        assertThatThrownBy(() -> port.run("payment:pay", () -> {
+            throw new IllegalStateException("下游失败");
+        })).isInstanceOf(IllegalStateException.class).hasMessage("下游失败");
     }
 
     @Test

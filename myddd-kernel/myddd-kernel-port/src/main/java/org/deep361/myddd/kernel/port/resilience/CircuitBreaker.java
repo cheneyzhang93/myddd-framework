@@ -11,7 +11,7 @@ import java.lang.annotation.Target;
  *
  * <p>熔断打开时抛 {@code BizException(CommonErrorCode.SERVICE_DEGRADED)}；配置
  * {@link #fallbackMethod()} 时改为调用同类内的降级方法（签名须与被保护方法兼容），降级方法自身抛出的
- * 异常原样传播。四项阈值参数为 {@code 0} 时表示由外部配置决定。
+ * 异常原样传播。三项阈值参数为 {@code 0} 时表示由外部配置决定。
  */
 @Target({ElementType.METHOD, ElementType.TYPE})
 @Retention(RetentionPolicy.RUNTIME)

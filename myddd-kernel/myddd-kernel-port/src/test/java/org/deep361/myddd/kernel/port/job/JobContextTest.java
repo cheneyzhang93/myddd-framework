@@ -29,10 +29,10 @@ class JobContextTest {
     void should_reject_invalid_job_name() {
         assertThatThrownBy(() -> JobContext.of(null))
                 .isInstanceOf(NullPointerException.class)
-                .hasMessageContaining("jobName");
+                .hasMessage("jobName 不能为 null");
         assertThatThrownBy(() -> JobContext.of(" "))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("jobName");
+                .hasMessage("jobName 不能为空白");
     }
 
     @Test
