@@ -71,6 +71,20 @@ class OutboxRecorderTest {
         assertThat(store.committedRecords()).isEmpty();
     }
 
+    /**
+     * 判据必须是"真实事务活动"而非"同步已激活"：SUPPORTS / NOT_SUPPORTED 这类传播行为下同步已激活但无真实事务，
+     * 此时记录会写进永不合并的事务工作副本（静默丢消息），必须同样快速失败。
+     */
+    @Test
+    void should_reject_recording_when_synchronization_active_without_actual_transaction() {
+        EventTestSupport.beginSynchronizationWithoutTransaction();
+
+        assertThatThrownBy(() -> recorder.record(OutboxPayloadFixtures.ORDER_PAID, AGGREGATE_TYPE, "o-1"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Outbox 记录必须在事务内执行");
+        assertThat(store.committedRecords()).isEmpty();
+    }
+
     @Test
     void should_reject_blank_channel_returned_by_resolver() {
         OutboxRecorder blankChannelRecorder = new OutboxRecorder(store, new JacksonOutboxPayloadSerializer(),

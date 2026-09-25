@@ -48,6 +48,11 @@ class MydddOutboxAutoConfigurationTest {
     }
 
     @Test
+    void should_default_outbox_enabled_to_false() {
+        assertThat(new MydddOutboxProperties().isEnabled()).isFalse();
+    }
+
+    @Test
     void should_fail_fast_when_enabled_without_store() {
         runner.withPropertyValues("myddd.domain.outbox.enabled=true").run(context -> {
             assertThat(context).hasFailed();

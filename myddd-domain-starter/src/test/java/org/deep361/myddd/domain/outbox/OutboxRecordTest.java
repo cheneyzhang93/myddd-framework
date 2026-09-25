@@ -118,7 +118,12 @@ class OutboxRecordTest {
 
     @Test
     void should_mark_dispatched_and_clear_last_error() {
-        OutboxRecord dispatched = pending().dispatching().retrying(NEXT_RETRY_AT, "boom").dispatching().dispatched();
+        OutboxRecord reclaimed = pending().dispatching().retrying(NEXT_RETRY_AT, "boom").dispatching();
+
+        assertThat(reclaimed.status()).isEqualTo(OutboxStatus.DISPATCHING);
+        assertThat(reclaimed.lastError()).isEqualTo("boom");
+
+        OutboxRecord dispatched = reclaimed.dispatched();
 
         assertThat(dispatched.status()).isEqualTo(OutboxStatus.DISPATCHED);
         assertThat(dispatched.retryCount()).isEqualTo(1);
@@ -142,6 +147,20 @@ class OutboxRecordTest {
         assertThat(dead.status()).isEqualTo(OutboxStatus.DEAD);
         assertThat(dead.retryCount()).isEqualTo(1);
         assertThat(dead.lastError()).isEqualTo("boom");
+    }
+
+    @Test
+    void should_reject_dispatched_from_non_dispatching_status() {
+        OutboxRecord dead = pending().dispatching().dead("boom");
+
+        assertThatThrownBy(() -> pending().dispatched())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("只有 DISPATCHING 记录可以标记投递成功")
+                .hasMessageContaining("实际 PENDING");
+        assertThatThrownBy(dead::dispatched)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("只有 DISPATCHING 记录可以标记投递成功")
+                .hasMessageContaining("实际 DEAD");
     }
 
     @Test
