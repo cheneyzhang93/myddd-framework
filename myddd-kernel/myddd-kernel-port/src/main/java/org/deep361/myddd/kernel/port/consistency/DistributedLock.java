@@ -12,7 +12,7 @@ import java.lang.annotation.Target;
  * <p>{@link #key()} 为必填的 SpEL 表达式（如 {@code "#userId"}、{@code "#command.orderId"}）——
  * 锁键必须由业务显式指定，框架不生成隐式锁键。
  *
- * <p>切面须用 Spring 的 {@code AnnotationUtils}/{@code MergedAnnotations} 解析（本注解未标 {@code @Inherited}，组合注解与类继承不生效）。
+ * <p>切面须用 Spring 的 {@code AnnotationUtils}/{@code MergedAnnotations} 解析，以便组合注解（元注解）生效。
  */
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)

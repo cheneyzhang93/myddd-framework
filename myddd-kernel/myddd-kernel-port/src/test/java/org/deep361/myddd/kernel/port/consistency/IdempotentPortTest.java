@@ -61,10 +61,10 @@ class IdempotentPortTest {
     @Test
     void release_with_foreign_token_should_leave_placeholder_intact() {
         InMemoryIdempotentPort port = new InMemoryIdempotentPort();
-        port.tryAcquire("order:request-1", "token-1", Duration.ofSeconds(60));
+        port.tryAcquire("order:request-1", "token-A", Duration.ofSeconds(60));
 
-        port.release("order:request-2", "token-1");
+        port.release("order:request-1", "token-B");
 
-        assertThat(port.tryAcquire("order:request-1", "token-2", Duration.ofSeconds(60))).isFalse();
+        assertThat(port.tryAcquire("order:request-1", "token-C", Duration.ofSeconds(60))).isFalse();
     }
 }

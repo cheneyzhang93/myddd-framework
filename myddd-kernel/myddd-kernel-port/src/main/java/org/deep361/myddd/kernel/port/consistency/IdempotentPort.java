@@ -6,6 +6,9 @@ import java.time.Duration;
  * 幂等端口：由适配器实现（Plan 3：consistency-starter，Redis / DB 双实现，配置
  * {@code myddd.consistency.idempotent.store=redis|db} 切换）。
  *
+ * <p>DB 实现须把过期行视为占位不存在（按 {@code expires_at} 判断，并择机清理过期行），
+ * 与 Redis 的 TTL 语义保持一致。
+ *
  * <p><b>语义</b>：{@code tryAcquire} 是原子的"占位"操作——返回 {@code true} 表示首次请求、可继续执行；
  * {@code false} 表示重复请求，切面据此抛 {@code BizException(CommonErrorCode.IDEMPOTENT_CONFLICT)}（HTTP 409）。
  *

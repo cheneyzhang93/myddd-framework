@@ -12,14 +12,15 @@ import java.lang.annotation.Target;
  * <p>校验失败：未登录抛 {@code BizException(CommonErrorCode.UNAUTHORIZED)}（HTTP 401）；
  * 已登录但权限不足抛 {@code BizException(CommonErrorCode.FORBIDDEN)}（HTTP 403）。
  *
- * <p>支持组合注解：切面须用 Spring 的 {@code AnnotationUtils}/{@code MergedAnnotations} 解析（本注解未标 {@code @Inherited}，类继承不生效）。
+ * <p>支持组合注解：切面须用 Spring 的 {@code AnnotationUtils}/{@code MergedAnnotations} 解析；本注解未标
+ * {@code @Inherited}，标注在父类上的注解不会被子类继承。
  */
 @Target({ElementType.METHOD, ElementType.TYPE})
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
 public @interface RequiresPermission {
 
-    /** 所需权限标识，至少一项（空数组由切面在启动期校验拒绝）。 */
+    /** 所需权限标识，至少一项且元素不可为空白（空数组与空白元素由切面在启动期校验拒绝）。 */
     String[] value();
 
     /** 多项权限的组合方式。 */
