@@ -51,7 +51,12 @@ public class MydddDomainEventAutoConfiguration {
         return new TransactionStageExecutor();
     }
 
-    /** 异步监听器线程池：有界队列 + 关闭时等待在飞任务（配置合法性已在本配置类构造期校验）。 */
+    /**
+     * 异步监听器线程池：有界队列 + 关闭时等待在飞任务（配置合法性已在本配置类构造期校验）。
+     *
+     * <p>{@code waitForTasksToCompleteOnShutdown} 与 {@code awaitTerminationSeconds} 两项都置上：前者覆盖直接
+     * {@code destroy()} 的路径（Spring 7 容器关闭走"早停机 lifecycle"，本身不依赖该开关），后者给出等待上限。
+     */
     @Bean(name = ASYNC_EXECUTOR_BEAN_NAME)
     @ConditionalOnMissingBean(name = ASYNC_EXECUTOR_BEAN_NAME)
     public ThreadPoolTaskExecutor mydddDomainEventAsyncExecutor(MydddDomainEventProperties properties) {

@@ -16,7 +16,9 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -174,6 +176,51 @@ class MydddDomainEventAutoConfigurationTest {
                             .hasRootCauseInstanceOf(IllegalStateException.class)
                             .rootCause()
                             .hasMessageContaining("myddd.domain.event.async.queue-capacity");
+                });
+    }
+
+    /**
+     * 直连线程池的 destroy() 路径：容器关闭走的是 Spring 7 的"早停机 lifecycle"（本就等待在飞任务），
+     * 只有直接 destroy() 才依赖 {@code waitForTasksToCompleteOnShutdown=true}，故本用例单独钉住该配置项。
+     */
+    @Test
+    void should_wait_for_in_flight_task_when_executor_destroyed_directly() {
+        runner.withPropertyValues("myddd.domain.event.async.shutdown-timeout=5s")
+                .run(context -> {
+                    ThreadPoolTaskExecutor executor = context.getBean(
+                            MydddDomainEventAutoConfiguration.ASYNC_EXECUTOR_BEAN_NAME, ThreadPoolTaskExecutor.class);
+                    CountDownLatch started = new CountDownLatch(1);
+                    CountDownLatch release = new CountDownLatch(1);
+                    AtomicBoolean finished = new AtomicBoolean();
+                    executor.execute(() -> {
+                        started.countDown();
+                        try {
+                            release.await();
+                        } catch (InterruptedException ex) {
+                            Thread.currentThread().interrupt();
+                            return;
+                        }
+                        finished.set(true);
+                    });
+                    assertThat(started.await(5, TimeUnit.SECONDS)).isTrue();
+
+                    // 任务被闩锁挡住，唯一放行者是 300ms 后的本线程：destroy() 不等就是丢弃在飞任务
+                    Thread releaser = new Thread(() -> {
+                        try {
+                            Thread.sleep(300);
+                        } catch (InterruptedException ex) {
+                            Thread.currentThread().interrupt();
+                            return;
+                        }
+                        release.countDown();
+                    }, "destroy-releaser");
+                    releaser.setDaemon(true);
+                    releaser.start();
+
+                    executor.destroy();
+
+                    assertThat(finished.get())
+                            .as("destroy() 必须等待在飞任务（waitForTasksToCompleteOnShutdown=true）").isTrue();
                 });
     }
 
