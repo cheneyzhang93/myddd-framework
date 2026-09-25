@@ -56,5 +56,25 @@ class InboundMessageTest {
         assertThatThrownBy(() -> new InboundMessage("c", "{}", null, headers))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("headers");
+
+        headers.clear();
+        headers.put(null, "v");
+
+        assertThatThrownBy(() -> new InboundMessage("c", "{}", null, headers))
+                .isInstanceOf(NullPointerException.class)
+                .hasMessageContaining("headers");
+    }
+
+    @Test
+    void headers_should_be_immutable_copy() {
+        Map<String, String> headers = new java.util.HashMap<>();
+        headers.put("k", "v");
+        InboundMessage message = new InboundMessage("c", "{}", null, headers);
+
+        headers.put("k", "changed");
+
+        assertThat(message.headers()).containsEntry("k", "v");
+        assertThatThrownBy(() -> message.headers().put("x", "y"))
+                .isInstanceOf(UnsupportedOperationException.class);
     }
 }

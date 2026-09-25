@@ -27,6 +27,9 @@ class MessagePortTest {
         assertThat(port.sent).hasSize(1);
         assertThat(port.sent.get(0).channel()).isEqualTo("order-events");
         assertThat(port.sent.get(0).payload()).isEqualTo("{\"orderId\":\"1\"}");
+        assertThat(port.sent.get(0).key()).isNull();
+        assertThat(port.sent.get(0).headers()).isEmpty();
+        assertThat(port.sent.get(0).deliverAt()).isNull();
     }
 
     @Test

@@ -39,6 +39,7 @@ class OutboundMessageTest {
         OutboundMessage message = OutboundMessage.of("order-events", "{}", "ORDER-1");
 
         assertThat(message.channel()).isEqualTo("order-events");
+        assertThat(message.payload()).isEqualTo("{}");
         assertThat(message.key()).isEqualTo("ORDER-1");
         assertThat(message.headers()).isEmpty();
         assertThat(message.deliverAt()).isNull();
