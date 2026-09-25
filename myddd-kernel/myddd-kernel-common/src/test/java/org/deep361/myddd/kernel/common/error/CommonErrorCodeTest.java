@@ -53,6 +53,9 @@ class CommonErrorCodeTest {
                 Map.entry(CommonErrorCode.NOT_FOUND, 404),
                 Map.entry(CommonErrorCode.METHOD_NOT_ALLOWED, 405),
                 Map.entry(CommonErrorCode.CONFLICT, 409),
+                Map.entry(CommonErrorCode.ILLEGAL_STATE, 409),
+                Map.entry(CommonErrorCode.LOCK_ACQUIRE_FAILED, 409),
+                Map.entry(CommonErrorCode.IDEMPOTENT_CONFLICT, 409),
                 Map.entry(CommonErrorCode.UNSUPPORTED_MEDIA_TYPE, 415),
                 Map.entry(CommonErrorCode.TOO_MANY_REQUESTS, 429),
                 Map.entry(CommonErrorCode.SYSTEM_ERROR, 500),
@@ -83,5 +86,19 @@ class CommonErrorCodeTest {
                 .isEqualTo("参数 pageSize 不合法");
         assertThat(CommonErrorCode.ARGUMENT_INVALID.formatDefaultMessage())
                 .isEqualTo("参数 {} 不合法");
+    }
+
+    @Test
+    void should_format_illegal_state_message_with_args() {
+        assertThat(CommonErrorCode.ILLEGAL_STATE.formatDefaultMessage("待支付", "PAY"))
+                .isEqualTo("当前状态 待支付 不允许执行操作 PAY");
+    }
+
+    @Test
+    void should_expose_conflict_codes_used_by_kernel_ports() {
+        assertThat(CommonErrorCode.LOCK_ACQUIRE_FAILED.httpStatus()).isEqualTo(409);
+        assertThat(CommonErrorCode.LOCK_ACQUIRE_FAILED.defaultMessage()).isEqualTo("资源正在处理中，请稍后重试");
+        assertThat(CommonErrorCode.IDEMPOTENT_CONFLICT.httpStatus()).isEqualTo(409);
+        assertThat(CommonErrorCode.IDEMPOTENT_CONFLICT.defaultMessage()).isEqualTo("重复请求，请勿重复提交");
     }
 }
