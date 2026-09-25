@@ -92,12 +92,21 @@ public final class StateMachineDefinition<S, E> {
         return Collections.unmodifiableSet(events);
     }
 
-    /** 是否为终态。 */
+    /**
+     * 是否为终态。
+     *
+     * @throws NullPointerException state 为 null
+     */
     public boolean isTerminal(S state) {
+        Objects.requireNonNull(state, "state 不能为 null");
         return terminalStates.contains(state);
     }
 
-    /** 该状态可触发的事件，按转移声明顺序；终态返回空集。 */
+    /**
+     * 该状态可触发的事件，按转移声明顺序；终态返回空集。
+     *
+     * @throws NullPointerException state 为 null
+     */
     public Set<E> eventsFrom(S state) {
         Objects.requireNonNull(state, "state 不能为 null");
         Map<E, Transition<S, E>> byEvent = byStateAndEvent.get(state);
@@ -106,7 +115,11 @@ public final class StateMachineDefinition<S, E> {
                 : Collections.unmodifiableSet(new LinkedHashSet<>(byEvent.keySet()));
     }
 
-    /** 查找转移。 */
+    /**
+     * 查找转移。
+     *
+     * @throws NullPointerException from 或 event 为 null
+     */
     public Optional<Transition<S, E>> transition(S from, E event) {
         Objects.requireNonNull(from, "from 不能为 null");
         Objects.requireNonNull(event, "event 不能为 null");
@@ -116,13 +129,19 @@ public final class StateMachineDefinition<S, E> {
     /**
      * 取转移，不存在则抛 {@link StateMachineException}（错误码 {@code ILLEGAL_STATE}）。
      *
+     * @throws NullPointerException  from 或 event 为 null
      * @throws StateMachineException 当前状态不允许执行该事件
      */
     public Transition<S, E> requireTransition(S from, E event) {
         return transition(from, event).orElseThrow(() -> new StateMachineException(from, event));
     }
 
-    /** 目标状态。 */
+    /**
+     * 目标状态。
+     *
+     * @throws NullPointerException  from 或 event 为 null
+     * @throws StateMachineException 当前状态不允许执行该事件
+     */
     public S targetState(S from, E event) {
         return requireTransition(from, event).to();
     }
@@ -161,9 +180,19 @@ public final class StateMachineDefinition<S, E> {
             }
         }
 
-        /** 设置初始状态（同时纳入状态集合）。 */
+        /**
+         * 设置初始状态（同时纳入状态集合）。
+         *
+         * @throws NullPointerException  state 为 null
+         * @throws IllegalStateException 已设置过初始状态（重复设置会让先设置的初始状态静默退化为普通状态）
+         */
         public Builder<S, E> initial(S state) {
-            this.initialState = Objects.requireNonNull(state, "初始状态不能为 null");
+            Objects.requireNonNull(state, "初始状态不能为 null");
+            if (initialState != null) {
+                throw new IllegalStateException("状态机 " + name + " 已设置初始状态 " + initialState
+                        + "，不允许重复设置为 " + state);
+            }
+            this.initialState = state;
             this.declaredStates.add(state);
             return this;
         }
