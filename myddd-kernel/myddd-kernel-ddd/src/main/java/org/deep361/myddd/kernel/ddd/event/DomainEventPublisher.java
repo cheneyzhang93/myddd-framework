@@ -1,7 +1,5 @@
 package org.deep361.myddd.kernel.ddd.event;
 
-import org.deep361.myddd.kernel.ddd.model.AggregateRoot;
-
 import java.util.List;
 import java.util.Objects;
 
@@ -15,7 +13,7 @@ import java.util.Objects;
  * <ul>
  *   <li>{@link #publish(DomainEvent, String, String)}：原语——单个事件 + 聚合坐标（聚合类型、聚合 id），
  *       投递通道由实现决定；实现方负责拒绝 {@code null} 参数。</li>
- *   <li>{@link #publish(AggregateRoot)}：聚合级默认实现——见方法 javadoc。</li>
+ *   <li>{@link #publish(DomainEventSource)}：聚合级默认实现——见方法 javadoc。</li>
  * </ul>
  *
  * <p><b>失败语义</b>：聚合级发布是<b>尽力而为</b>——已投递的事件不回滚，未投递的尾部事件<b>不保证重放</b>；
@@ -33,28 +31,28 @@ public interface DomainEventPublisher {
     void publish(DomainEvent event, String aggregateType, String aggregateId);
 
     /**
-     * 发布聚合当前收集的全部事件（按登记顺序），并把它们移出聚合。
+     * 发布来源当前收集的全部事件（按登记顺序），并把它们移出源。
      *
-     * <p>实现步骤：{@link AggregateRoot#drainEvents()} 取一批快照 → 按序逐个调用
-     * {@link #publish(DomainEvent, String, String)}（聚合坐标为 {@code aggregate.getClass().getName()} 与
-     * {@code String.valueOf(aggregate.getId())}）→ 若投递期间聚合又被登记了新事件，则再取一批，直到聚合无事件。
+     * <p>实现步骤：{@link DomainEventSource#drainEvents()} 取一批快照 → 按序逐个调用
+     * {@link #publish(DomainEvent, String, String)}（聚合坐标为 {@code source.getClass().getName()} 与
+     * {@code String.valueOf(source.getId())}）→ 若投递期间来源又被登记了新事件，则再取一批，直到来源无事件。
      *
      * <p><b>失败语义</b>：投递中途抛异常时异常原样上抛；已 drain 出聚合的事件<b>不会</b>被重新登记（聚合不提供
      * 回填入口），因此未投递的事件不会在本进程内重放——"不丢"由同一事务内的 Outbox 记录负责。监听器不得对同一
      * 聚合无限登记事件，否则本方法不终止。
      *
-     * @param aggregate 聚合根，不可为 null
+     * @param source 领域事件来源（由聚合根实现），不可为 null
      */
-    default void publish(AggregateRoot<?> aggregate) {
-        Objects.requireNonNull(aggregate, "聚合根不能为 null");
-        String aggregateType = aggregate.getClass().getName();
-        String aggregateId = String.valueOf(aggregate.getId());
-        List<DomainEvent> batch = aggregate.drainEvents();
+    default void publish(DomainEventSource<?> source) {
+        Objects.requireNonNull(source, "聚合根不能为 null");
+        String aggregateType = source.getClass().getName();
+        String aggregateId = String.valueOf(source.getId());
+        List<DomainEvent> batch = source.drainEvents();
         while (!batch.isEmpty()) {
             for (DomainEvent event : batch) {
                 publish(event, aggregateType, aggregateId);
             }
-            batch = aggregate.drainEvents();
+            batch = source.drainEvents();
         }
     }
 }

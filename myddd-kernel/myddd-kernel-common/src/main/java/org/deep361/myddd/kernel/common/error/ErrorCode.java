@@ -1,7 +1,5 @@
 package org.deep361.myddd.kernel.common.error;
 
-import org.deep361.myddd.kernel.common.util.MessageFormatter;
-
 /**
  * 错误码契约：全框架唯一错误标识。
  *
@@ -33,17 +31,17 @@ public interface ErrorCode {
      *
      * <p>含占位符的文案必须经 {@link #formatDefaultMessage(Object...)} 传入对应参数渲染，
      * 无参渲染会把 {@code {}} 原样留在输出中；替换细则（{@code null} 模板、参数不足、
-     * 不支持 {@code \{\}} 转义等）见 {@link MessageFormatter}。
+     * 不支持 {@code \{\}} 转义等）见 {@link PlaceholderRenderer}。
      */
     String defaultMessage();
 
     /**
-     * 用参数渲染兜底文案，等价于 {@code MessageFormatter.format(defaultMessage(), messageArgs)}，
-     * 替换规则完全继承 {@link MessageFormatter}。
+     * 用参数渲染兜底文案，等价于 {@code PlaceholderRenderer.render(defaultMessage(), messageArgs)}，
+     * 替换规则完全继承 {@link PlaceholderRenderer}。
      *
      * <p>对含占位符的文案不传参数时返回原样模板（占位符保留）。
      */
     default String formatDefaultMessage(Object... messageArgs) {
-        return MessageFormatter.format(defaultMessage(), messageArgs);
+        return PlaceholderRenderer.render(defaultMessage(), messageArgs);
     }
 }

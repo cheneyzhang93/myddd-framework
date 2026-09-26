@@ -15,7 +15,7 @@ import java.util.Objects;
  * 落库失败即抛异常，进程内监听器一个都不执行、{@code AFTER_COMMIT} 钩子也不注册。进程内投递失败会连同业务改动
  * 一起回滚，Outbox 记录随之回滚（同事务），不会产生孤立消息。
  *
- * <p>聚合级 {@link #publish(org.deep361.myddd.kernel.ddd.model.AggregateRoot)}（"取快照—逐个投递—再取快照"
+ * <p>聚合级 {@link #publish(org.deep361.myddd.kernel.ddd.event.DomainEventSource)}（"取快照—逐个投递—再取快照"
  * 循环）由 kernel 的默认实现提供，本类不覆写——聚合事件与单事件走同一条通道，因此每个事件都会各自落一条记录。
  *
  * <p><b>Outbox 为可选</b>：单参数构造器表示"不做 Outbox 记录"（纯进程内投递）；自动装配在有

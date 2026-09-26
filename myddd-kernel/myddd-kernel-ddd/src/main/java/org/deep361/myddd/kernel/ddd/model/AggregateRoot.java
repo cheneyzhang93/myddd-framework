@@ -1,6 +1,7 @@
 package org.deep361.myddd.kernel.ddd.model;
 
 import org.deep361.myddd.kernel.ddd.event.DomainEvent;
+import org.deep361.myddd.kernel.ddd.event.DomainEventSource;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,8 +22,10 @@ import java.util.Objects;
  *
  * <p>乐观锁版本号不由本类承载：版本字段属于持久化适配器的 PO（MyBatis-Plus {@code @Version}，
  * 持久化适配器，Plan 3 落地），聚合对象只表达领域状态与事件。
+ *
+ * <p>本类实现 {@link DomainEventSource}：发布器以该端口接收聚合，故 {@code ddd.event} 不反向依赖本包。
  */
-public abstract class AggregateRoot<ID> extends Entity<ID> {
+public abstract class AggregateRoot<ID> extends Entity<ID> implements DomainEventSource<ID> {
 
     private final List<DomainEvent> domainEvents = new ArrayList<>();
 
@@ -68,7 +71,7 @@ public abstract class AggregateRoot<ID> extends Entity<ID> {
      * <p><b>发布器契约</b>：本方法为无差别清空，故发布器必须先取一次快照（{@link #domainEvents()}）、
      * 以该快照为准完成发布后再调用本方法；发布期间不应再次登记事件——若监听器在"取快照—清空"之间
      * 回调 {@link #registerEvent(DomainEvent)}，这些新事件会随清空一并丢弃。需要"发布期间新产生的事件
-     * 继续投递"时，由发布器循环"取快照—发布—清空"直至聚合无事件（见 {@link #drainEvents()} 与 {@link org.deep361.myddd.kernel.ddd.event.DomainEventPublisher#publish(AggregateRoot)}）。
+     * 继续投递"时，由发布器循环"取快照—发布—清空"直至聚合无事件（见 {@link #drainEvents()} 与 {@link org.deep361.myddd.kernel.ddd.event.DomainEventPublisher#publish(DomainEventSource)}）。
      */
     public void clearDomainEvents() {
         domainEvents.clear();
@@ -90,6 +93,7 @@ public abstract class AggregateRoot<ID> extends Entity<ID> {
      * <p><b>线程约束</b>：本方法不保证原子性——"取快照—清空"之间存在窗口，多线程共享聚合时窗口内
      * 由 {@link #registerEvent(DomainEvent)} 登记的事件会被清空丢弃（类级线程约束见本类 javadoc）。
      */
+    @Override
     public List<DomainEvent> drainEvents() {
         List<DomainEvent> drained = List.copyOf(domainEvents);
         domainEvents.clear();

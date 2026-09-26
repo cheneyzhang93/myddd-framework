@@ -70,7 +70,7 @@ class DomainEventPublisherTest {
     void should_reject_null_aggregate() {
         RecordingPublisher publisher = new RecordingPublisher();
 
-        assertThatThrownBy(() -> publisher.publish((AggregateRoot<?>) null))
+        assertThatThrownBy(() -> publisher.publish((DomainEventSource<?>) null))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("聚合根不能为 null");
     }
@@ -151,7 +151,7 @@ class DomainEventPublisherTest {
     void primitive_publish_should_be_the_only_abstract_method() throws Exception {
         Method primitive = DomainEventPublisher.class.getMethod(
                 "publish", DomainEvent.class, String.class, String.class);
-        Method aggregateLevel = DomainEventPublisher.class.getMethod("publish", AggregateRoot.class);
+        Method aggregateLevel = DomainEventPublisher.class.getMethod("publish", DomainEventSource.class);
 
         assertThat(Modifier.isAbstract(primitive.getModifiers())).isTrue();
         assertThat(primitive.getReturnType()).isEqualTo(void.class);
