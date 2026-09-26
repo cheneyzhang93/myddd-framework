@@ -9,8 +9,29 @@
 | `myddd-dependencies` | 版本唯一真源 BOM（devbox 镜像 tag 属性定义在父 POM，供 Plan 3 的 test-starter 资源过滤消费） | ✅ |
 | `myddd-kernel-common` | 统一响应 / 错误码与异常 / 分页模型 / traceId | ✅ |
 | `myddd-kernel-ddd` | DDD 战术基类（值对象 / 实体 / 聚合根 / 领域事件 / 仓储标记） | ✅ |
+| `myddd-kernel-port` | 能力端口与注解：消息 / 任务 / 韧性 / 鉴权 / 一致性；零三方依赖（只有接口、注解与不可变消息模型） | ✅ |
+| `myddd-kernel-extension` | 扩展点注册表：`@ExtensionPoint` / `@Extension` 的场景匹配、优先级与启动期诊断 | ✅ |
+| `myddd-kernel-statemachine` | 零依赖状态机：定义期校验（可达性 / 终态）+ 运行时驱动（`fire` / `canFire` / 持久化恢复） | ✅ |
+| `myddd-kernel-rule` | 轻量规则引擎：`Rule` / `RulePackage` 与 `RuleRegistry` 的匹配与执行语义 | ✅ |
+| `myddd-domain-starter` | 领域装配：`@Domain` 模块扫描、进程内领域事件总线（事务阶段协作）、Outbox 可靠投递（SPI + 投递器；持久化实现由 Plan 3 的 `persistence-starter` 提供） | ✅ |
+| `myddd-adapters/myddd-archunit` | 架构守卫规则库：设计文档 §5.2 的 7 条红线拆成 11 条可执行规则，业务工程一行接入 | ✅ |
 
-> 后续计划持续追加：kernel 端口与扩展机制、领域装配（Outbox）、各能力适配器、测试基座等。
+> 后续计划持续追加：测试基座与 devbox、web / persistence / cache / consistency / feign 适配器、MQ / Job / 限流 / 鉴权双适配、模板仓。
+
+## 架构守卫
+
+业务工程以 `test` 作用域引入 `myddd-archunit`，在测试里一行接入（规则集对应设计文档 §5.2）：
+
+```java
+@Test
+void architecture() {
+    MydddArchitectureSpec.verify("com.deep361.order");
+}
+```
+
+- 覆盖：领域纯净红线（领域层禁 Spring/MyBatis/Jackson/JPA/事务注解等）、分层依赖方向、契约接口必须被 Controller 实现、仓储接口与传输对象命名后缀、模块级与包级循环依赖；
+- 只分析生产代码（默认排除测试类）；某一层尚不存在时对应规则不判失败，因此分层未建全的项目也能提前接入，层一出现即生效；
+- 断言失败信息含违规类全名与设计文档条款号，照提示改代码即可；确有正当例外时用规则自带的 `.ignoreDependency(...)` 在业务工程内显式豁免（豁免即留痕）。
 
 ## 环境要求
 
@@ -24,7 +45,7 @@
 JAVA_HOME="$(cat .jdk21-home)" ./mvnw -B -ntp clean verify
 ```
 
-JaCoCo 覆盖率门槛在 verify 阶段强制：内核/领域模块行覆盖 ≥80%，其余 ≥60%。注意：未产生测试执行数据的模块 JaCoCo 会跳过检查，CI 会额外断言覆盖率产物存在（见本仓 CI 工作流）。
+JaCoCo 覆盖率门槛在 verify 阶段强制：内核模块行覆盖与分支覆盖均 ≥80%，其余模块两项均 ≥60%（`myddd.jacoco.minimum` 属性，内核模块在自身 POM 覆写为 `0.80`）。注意：未产生测试执行数据的模块 JaCoCo 会跳过检查，CI 另做三项守卫（见本仓 CI 工作流）：① 覆盖率产物存在性；② 门槛数值（XML 级校验）——内核模块的阈值声明（含 profile 覆写）不得低于 `0.80`，父 POM 的 check 规则必须同时含 LINE 与 BRANCH 两档 `COVEREDRATIO` 且阈值走 `myddd.jacoco.minimum` 属性；③ 反绕过——任何 POM 不得硬编码门槛，或用 `<skip>true</skip>`／全吞 `<exclude>`／模块级 `<rules>` 关掉门槛。
 
 ## 版本真源
 

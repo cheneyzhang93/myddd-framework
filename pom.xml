@@ -351,6 +351,13 @@
                                                 <value>COVEREDRATIO</value>
                                                 <minimum>${myddd.jacoco.minimum}</minimum>
                                             </limit>
+                                            <!-- 分支覆盖率与行覆盖率同门槛：只约束 LINE 时"分支写不测"不会被任何环节拦住
+                                                 （实测基线 2026-09-25：全部 jar 模块 BRANCH ≥ 88.46%，内核与 archunit 为 100%） -->
+                                            <limit>
+                                                <counter>BRANCH</counter>
+                                                <value>COVEREDRATIO</value>
+                                                <minimum>${myddd.jacoco.minimum}</minimum>
+                                            </limit>
                                         </limits>
                                     </rule>
                                 </rules>

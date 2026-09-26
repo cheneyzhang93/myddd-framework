@@ -49,5 +49,35 @@
             <groupId>org.deep361.myddd</groupId>
             <artifactId>myddd-kernel-common</artifactId>
         </dependency>
+        <!-- Plan 2 新增模块：验证 6 个新坐标进 BOM 后消费端可解析（版本由 BOM 提供，此处刻意不写 version） -->
+        <dependency>
+            <groupId>org.deep361.myddd</groupId>
+            <artifactId>myddd-kernel-port</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.deep361.myddd</groupId>
+            <artifactId>myddd-kernel-extension</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.deep361.myddd</groupId>
+            <artifactId>myddd-kernel-statemachine</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.deep361.myddd</groupId>
+            <artifactId>myddd-kernel-rule</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.deep361.myddd</groupId>
+            <artifactId>myddd-domain-starter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.deep361.myddd</groupId>
+            <artifactId>myddd-archunit</artifactId>
+        </dependency>
+        <!-- 自钉三方坐标（Boot BOM 不管理 archunit）：验证版本经 import BOM 到达消费端 -->
+        <dependency>
+            <groupId>com.tngtech.archunit</groupId>
+            <artifactId>archunit</artifactId>
+        </dependency>
     </dependencies>
 </project>
