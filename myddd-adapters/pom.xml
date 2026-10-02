@@ -33,5 +33,7 @@
         <module>myddd-mq-kafka-starter</module>
         <module>myddd-job-spring-starter</module>
         <module>myddd-job-xxljob-starter</module>
+        <module>myddd-auth-satoken-starter</module>
+        <module>myddd-auth-security-starter</module>
     </modules>
 </project>

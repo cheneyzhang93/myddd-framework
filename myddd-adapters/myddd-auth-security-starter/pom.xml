@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.deep361.myddd</groupId>
+        <artifactId>myddd-parent</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <relativePath>../../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>myddd-auth-security-starter</artifactId>
+
+    <name>myddd-auth-security-starter</name>
+    <description>鉴权能力 Spring Security provider：AuthPort 实现、静态 holder 的线程归一（R9）、AuthenticationManager 委托登录（R14）</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.deep361.myddd</groupId>
+            <artifactId>myddd-kernel-common</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.deep361.myddd</groupId>
+            <artifactId>myddd-kernel-port</artifactId>
+        </dependency>
+
+        <!-- 唯一的厂商坐标。版本由根 BOM 钉（根 pom.xml 导入 spring-boot-dependencies:4.1.1，
+             该 BOM 把 spring-security.version pin 成 7.1.1，spring-security-core 的 managed 条目在同一文件里）：
+             这里只引 core，web/config 留给业务与"两家同时在 classpath"的夹具（Task 51）。
+             与 satoken 那一家正好相反的依赖面不对称：那边必须往根 POM 补 sa-token-core 管理项，
+             本轮根 POM 与 BOM 一行都不动——写了 <version> 反而是第二真源。 -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-core</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-context</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-autoconfigure</artifactId>
+        </dependency>
+
+        <!-- 测试 -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-test-autoconfigure</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- 端口契约基类 AUTH-C* 在 test-starter 的 main 源里（Task 32），§0.3-11 只禁"provider 之间"互依赖。 -->
+        <dependency>
+            <groupId>org.deep361.myddd</groupId>
+            <artifactId>myddd-test-starter</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>

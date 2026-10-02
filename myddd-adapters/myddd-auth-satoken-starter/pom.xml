@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.deep361.myddd</groupId>
+        <artifactId>myddd-parent</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <relativePath>../../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>myddd-auth-satoken-starter</artifactId>
+
+    <name>myddd-auth-satoken-starter</name>
+    <description>鉴权能力 Sa-Token provider：AuthPort 实现、非 Web 线程的上下文归一（R9）、权限源启动自检（R15）</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.deep361.myddd</groupId>
+            <artifactId>myddd-kernel-common</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.deep361.myddd</groupId>
+            <artifactId>myddd-kernel-port</artifactId>
+        </dependency>
+
+        <!-- 唯一的厂商坐标。Sa-Token 的 Spring 装配链（SaBeanRegister/SaBeanInject）刻意不在这里引：
+             见 config 包说明与计划正文 Task 49 Step 0 第 5 条——starter 会把 webmvc 过滤器链拉进一个库模块，
+             而 R9 要求本模块在非 Web 线程上也是正确的。 -->
+        <dependency>
+            <groupId>cn.dev33</groupId>
+            <artifactId>sa-token-core</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-context</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-autoconfigure</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+
+        <!-- 测试 -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- ApplicationContextRunner（AC 组九条的执行体）在本 jar 的
+             org/springframework/boot/test/context/runner/ 包里（一手：本机
+             spring-boot-test-4.1.1.jar 的条目清单命中 1，spring-boot-test-autoconfigure-4.1.1.jar 命中 0），
+             与 myddd-limiter-sentinel-starter/pom.xml、myddd-limiter-resilience4j-starter/pom.xml 的测试段同形。
+             不引 spring-test：本模块的夹具是厂商自己的 SaTokenContextForThreadLocalStaff（Task 49 Step 0 第 6 条），
+             不需要 MockHttpServletRequest。 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- 端口契约基类 AUTH-C* 在 test-starter 的 main 源里（Task 32），§0.3-11 只禁"provider 之间"互依赖。 -->
+        <dependency>
+            <groupId>org.deep361.myddd</groupId>
+            <artifactId>myddd-test-starter</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>
