@@ -26,6 +26,10 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: maven
+      - name: devbox 镜像 tag ↔ 父 POM 属性一致性（无需 Docker，先于构建判红）
+        run: bash myddd-devbox/verify-images.sh
+      - name: devbox compose 卫生检查（明文凭据/野变量/写死端口/悬空依赖，无需 Docker）
+        run: bash myddd-devbox/check-compose.sh
       - name: Build and verify
         run: ./mvnw -B -ntp clean install
       - name: 断言覆盖率产物存在（防"无测试数据即跳过门槛"）
@@ -44,8 +48,30 @@ jobs:
               echo "::error::模块 $module_dir 声明了 JaCoCo 却未产出覆盖率数据（测试缺失或未执行）"
               missing=1
             fi
-          done < <(find . -name pom.xml -not -path '*/target/*')
+          # tools/ 下是非 reactor 的消费端夹具（bom-smoke / no-springdoc-smoke），它们刻意不激活 JaCoCo：
+          # 夹具自己没有覆盖率门槛，逼它激活反而会把"夹具即模块"的边界糊掉。这里只放过 tools/，
+          # reactor 里新增 jar 模块忘了激活 JaCoCo 仍然立刻红。
+          done < <(find . -name pom.xml -not -path '*/target/*' -not -path './tools/*')
           exit $missing
+      - name: 集成测试真实执行断言（防"CI 上 IT 被静默跳过"）
+        run: |
+          set -euo pipefail
+          # 本机无 Docker 时 IT 整类跳过是设计内的行为（devbox/README 有补跑清单），但 CI runner 有 Docker：
+          # 这里若统计到"一条 IT 都没跑"或"跑了的里面有跳过"，就是环境或注解出错，必须判红而不是绿着过去。
+          total=0
+          skipped=0
+          files=0
+          while IFS= read -r xml; do
+            files=$((files + 1))
+            t=$(sed -n 's/.*<testsuite[^>]* tests="\([0-9]*\)".*/\1/p' "$xml" | head -1)
+            s=$(sed -n 's/.*<testsuite[^>]* skipped="\([0-9]*\)".*/\1/p' "$xml" | head -1)
+            total=$((total + ${t:-0}))
+            skipped=$((skipped + ${s:-0}))
+          done < <(find . -path '*/target/failsafe-reports/TEST-*.xml' | sort)
+          echo "failsafe 报告 $files 份，IT 用例 $total 条，跳过 $skipped 条"
+          [ "$files" -gt 0 ] || { echo "::error::没有任何 failsafe 报告：IT 要么未编写、要么 verify 阶段被绕过"; exit 1; }
+          [ "$total" -gt 0 ] || { echo "::error::failsafe 报告里一条用例都没有（IT 空转）"; exit 1; }
+          [ "$skipped" -eq 0 ] || { echo "::error::有 $skipped 条 IT 被跳过——CI 有 Docker，跳过即容器/Testcontainers 侧出了问题"; exit 1; }
       - name: 覆盖率门槛值守卫（防模块阈值静默回落到父级 0.60）
         run: |
           python3 - <<'PY'
@@ -218,6 +244,7 @@ jobs:
           check resilience4j-circuitbreaker 2.4.0
           check spring-boot-starter-web 4.1.1
           check myddd-kernel-common 1.0.0-SNAPSHOT
+          check myddd-kernel-ddd 1.0.0-SNAPSHOT
           check rocketmq-client 5.5.1
           check archunit 1.5.0
           check myddd-kernel-port 1.0.0-SNAPSHOT
@@ -226,5 +253,15 @@ jobs:
           check myddd-kernel-rule 1.0.0-SNAPSHOT
           check myddd-domain-starter 1.0.0-SNAPSHOT
           check myddd-archunit 1.0.0-SNAPSHOT
+          check myddd-test-starter 1.0.0-SNAPSHOT
+          check myddd-persistence-starter 1.0.0-SNAPSHOT
+          check myddd-cache-starter 1.0.0-SNAPSHOT
+          check myddd-consistency-starter 1.0.0-SNAPSHOT
+          check myddd-web-starter 1.0.0-SNAPSHOT
+          check myddd-feign-starter 1.0.0-SNAPSHOT
       - name: BOM 消费端坐标可解析性（版本插值正确 ≠ 构件真实存在）
         run: ./mvnw -B -ntp -f tools/bom-smoke/pom.xml dependency:resolve
+      - name: 不引 springdoc 的样例应用启动验证（web-starter openapi 那支的类缺席分支）
+        # 单元层证明不了这一支：springdoc 在 web-starter 是 optional 依赖，本模块测试类路径上它永远在。
+        # 夹具真起一次上下文，三条断言里两条由"springdoc 不在"决定（对照实验：把 springdoc 加回去即 2 红 1 绿）。
+        run: ./mvnw -B -ntp -f tools/no-springdoc-smoke/pom.xml test

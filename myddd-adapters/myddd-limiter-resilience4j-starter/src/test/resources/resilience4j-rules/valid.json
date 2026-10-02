@@ -1,0 +1,25 @@
+{
+  "flow": [
+    { "resource": "order:create", "count": 50 },
+    { "resource": "batch:import", "count": 5 }
+  ],
+  "degrade": [
+    {
+      "resource": "payment:capture",
+      "threshold": "error-ratio",
+      "ratio": 50,
+      "minCalls": 10,
+      "windowMs": 5000,
+      "openSeconds": 30
+    },
+    {
+      "resource": "inventory:lock",
+      "threshold": "slow-ratio",
+      "ratio": 60.5,
+      "maxRtMs": 200,
+      "minCalls": 4,
+      "windowMs": 2000,
+      "openSeconds": 15
+    }
+  ]
+}

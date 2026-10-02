@@ -1,0 +1,5 @@
+{
+  "flow": [
+    { "resource": "order:create", "count": -1 }
+  ]
+}

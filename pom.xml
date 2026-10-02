@@ -18,11 +18,13 @@
         <module>myddd-kernel/myddd-kernel-common</module>
         <module>myddd-kernel/myddd-kernel-ddd</module>
         <module>myddd-domain-starter</module>
-        <module>myddd-adapters/myddd-archunit</module>
+        <module>myddd-auth-starter</module>
+        <module>myddd-adapters</module>
         <module>myddd-kernel/myddd-kernel-port</module>
         <module>myddd-kernel/myddd-kernel-extension</module>
         <module>myddd-kernel/myddd-kernel-statemachine</module>
         <module>myddd-kernel/myddd-kernel-rule</module>
+        <module>myddd-test-starter</module>
     </modules>
 
     <properties>
@@ -38,8 +40,11 @@
         <mybatis-plus.version>3.5.17</mybatis-plus.version>
         <sa-token.version>1.46.0</sa-token.version>
         <resilience4j.version>2.4.0</resilience4j.version>
+        <!-- RocketMQ 家族单一联动点：client/remoting/common 三个登记条目共用本属性（Plan 4 Task 31，R3），
+             升级只改这里一处；acl/logging 不登记、由下方 enforcer bannedDependencies 封禁，理由见 dependencyManagement 里那段裁定 -->
         <rocketmq.version>5.5.1</rocketmq.version>
         <xxl-job.version>3.4.2</xxl-job.version>
+        <sentinel.version>1.8.9</sentinel.version>
         <redisson.version>4.7.0</redisson.version>
         <springdoc.version>3.1.1</springdoc.version>
         <mapstruct.version>1.6.3</mapstruct.version>
@@ -132,12 +137,35 @@
                 <artifactId>sa-token-redis-template</artifactId>
                 <version>${sa-token.version}</version>
             </dependency>
-            <!-- 注意：SCA 2025.1.0.0 将 rocketmq 家族管理为 5.3.1，此处仅单点升 client 到 5.5.1；
-                 引入 SCA 的 RocketMQ starter 时需同步钉住 org.apache.rocketmq:* 全家族，避免 ACL/客户端小版本错配 -->
+            <!-- RocketMQ 家族版本裁定（Plan 4 Task 31，R3）：
+                 无法把全家族钉到 5.5.1 —— org.apache.rocketmq:rocketmq-acl 与 rocketmq-logging 在 Central
+                 没有 5.5.1 坐标（本机 curl 一手 404 取证，旧家族停在 5.3.1）。
+                 裁定：只钉 client，让 remoting/common 随它同版本；acl/logging 由 enforcer bannedDependencies
+                 封禁——一旦 SCA 的 RocketMQ starter 把它们带进来（SCA 2025.1.0.0 管成 5.3.1），构建直接失败，
+                 而不是静默产出"5.5.1 client + 5.3.1 acl"这种只在生产报鉴权错的组合。
+                 broker 侧（devbox 的 apache/rocketmq:5.3.2）与 client 5.5.1 的兼容性由 Task 40 的真投递 IT 证明；
+                 若被证伪，改 ${rocketmq.version} 这一个属性即可，不改任何代码。 -->
             <dependency>
                 <groupId>org.apache.rocketmq</groupId>
                 <artifactId>rocketmq-client</artifactId>
                 <version>${rocketmq.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.rocketmq</groupId>
+                <artifactId>rocketmq-remoting</artifactId>
+                <version>${rocketmq.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.rocketmq</groupId>
+                <artifactId>rocketmq-common</artifactId>
+                <version>${rocketmq.version}</version>
+            </dependency>
+            <!-- Sentinel：Boot/Cloud 的 BOM 都不管理它，自钉。只引 sentinel-core（判定本体），
+                 dashboard 上报走 sentinel-transport 的可选 SPI，本框架不主动装配它。 -->
+            <dependency>
+                <groupId>com.alibaba.csp</groupId>
+                <artifactId>sentinel-core</artifactId>
+                <version>${sentinel.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.xuxueli</groupId>
@@ -209,6 +237,91 @@
             <dependency>
                 <groupId>org.deep361.myddd</groupId>
                 <artifactId>myddd-archunit</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.deep361.myddd</groupId>
+                <artifactId>myddd-test-starter</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.deep361.myddd</groupId>
+                <artifactId>myddd-persistence-starter</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.deep361.myddd</groupId>
+                <artifactId>myddd-cache-starter</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.deep361.myddd</groupId>
+                <artifactId>myddd-consistency-starter</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.deep361.myddd</groupId>
+                <artifactId>myddd-web-starter</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.deep361.myddd</groupId>
+                <artifactId>myddd-feign-starter</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.deep361.myddd</groupId>
+                <artifactId>myddd-mq-starter</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.deep361.myddd</groupId>
+                <artifactId>myddd-mq-rocketmq-starter</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.deep361.myddd</groupId>
+                <artifactId>myddd-mq-kafka-starter</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.deep361.myddd</groupId>
+                <artifactId>myddd-job-spring-starter</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.deep361.myddd</groupId>
+                <artifactId>myddd-job-xxljob-starter</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.deep361.myddd</groupId>
+                <artifactId>myddd-resilience-starter</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.deep361.myddd</groupId>
+                <artifactId>myddd-limiter-sentinel-starter</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.deep361.myddd</groupId>
+                <artifactId>myddd-limiter-resilience4j-starter</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.deep361.myddd</groupId>
+                <artifactId>myddd-auth-starter</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.deep361.myddd</groupId>
+                <artifactId>myddd-auth-satoken-starter</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.deep361.myddd</groupId>
+                <artifactId>myddd-auth-security-starter</artifactId>
                 <version>${project.version}</version>
             </dependency>
         </dependencies>
@@ -299,6 +412,16 @@
                                         <version>[21,)</version>
                                     </requireJavaVersion>
                                     <banDuplicatePomDependencyVersions/>
+                                    <!-- R3：SCA 的 RocketMQ starter 会带进 5.3.1 的 acl/logging，与自钉的 5.5.1 client 混版本。
+                                         这两条把"混版本"从生产事故变成构建失败。excludes 语法：groupId:artifactId:versionRange。 -->
+                                    <bannedDependencies>
+                                        <excludes>
+                                            <exclude>org.apache.rocketmq:rocketmq-acl</exclude>
+                                            <exclude>org.apache.rocketmq:rocketmq-logging</exclude>
+                                        </excludes>
+                                        <searchTransitive>true</searchTransitive>
+                                        <message>RocketMQ 家族按 R3 只允许 client/remoting/common 三个坐标（版本 ${rocketmq.version}）；rocketmq-acl 与 rocketmq-logging 被禁，因为它们没有与 client 同步的版本，混进来就是静默的版本错配。</message>
+                                    </bannedDependencies>
                                     <requirePluginVersions>
                                         <message>所有 Maven 插件必须显式声明版本</message>
                                     </requirePluginVersions>

@@ -12,6 +12,15 @@ package org.deep361.myddd.kernel.common.error;
  */
 public interface ErrorCode {
 
+    /**
+     * 错误码格式的单一真源：{@code <大写字母域>_<五位数字>}。
+     *
+     * <p>此前这条正则只写在一个测试的字面量里，消费方要校验格式只能自己再抄一份，两处漂移无人报警
+     * （路线图 :113 的待办，由 Plan 4 裁定公开）。框架内置码一律占 {@code MYDDD_} 段位
+     * （见 {@link CommonErrorCode}），业务域用自己的域词，两者共用本 Pattern 校验。
+     */
+    java.util.regex.Pattern CODE_PATTERN = java.util.regex.Pattern.compile("[A-Z]+_\\d{5}");
+
     /** 稳定错误码，如 {@code MYDDD_40001}。 */
     String code();
 

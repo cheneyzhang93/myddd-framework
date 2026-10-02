@@ -22,3 +22,11 @@ Thumbs.db
 .jdk21-home
 *.log
 logs/
+
+# devbox：本机口令与外部发行包脚本不入库
+myddd-devbox/.env
+myddd-devbox/seed/mysql/03-xxl-job.sql
+
+# Python 缓存
+__pycache__/
+*.pyc

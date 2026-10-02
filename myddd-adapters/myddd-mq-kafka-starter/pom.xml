@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.deep361.myddd</groupId>
+        <artifactId>myddd-parent</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <relativePath>../../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>myddd-mq-kafka-starter</artifactId>
+
+    <name>myddd-mq-kafka-starter</name>
+    <description>消息能力 Kafka provider：复用 Boot 的 KafkaTemplate 与 spring.kafka.*，只做线上格式与失败翻译</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.deep361.myddd</groupId>
+            <artifactId>myddd-kernel-common</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.deep361.myddd</groupId>
+            <artifactId>myddd-kernel-port</artifactId>
+        </dependency>
+        <!-- provider 只依赖壳的 SPI（ProviderMessagePort/MqProvider）与出站头单点（OutboundMessageEnricher）。
+             依赖方向是 R2 的上界：provider → 壳 → 内核，反向一律禁止（archunit 规则见 Task 56）。 -->
+        <dependency>
+            <groupId>org.deep361.myddd</groupId>
+            <artifactId>myddd-mq-starter</artifactId>
+        </dependency>
+
+        <!-- 厂商接线：只要 spring-kafka。模板与 producer 工厂由 Boot 的
+             org.springframework.boot:spring-boot-kafka 装配（R5），本模块不声明它为主依赖，
+             只在测试期用它跑一次真自动配置（AC5）。spring-kafka/kafka-clients/spring-boot-kafka
+             三者的版本均由 Boot BOM（kafka.version/spring-kafka.version）管理，此处不写 version。 -->
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka</artifactId>
+        </dependency>
+
+        <!-- 装配面 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-autoconfigure</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-context</artifactId>
+        </dependency>
+
+        <!-- 测试 -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- AC5 要跑 Boot 的真 Kafka 装配来证明"本模块不和自己造的模板玩"，
+             所以它是 test 依赖而不是 compile 依赖：装配由使用者的 starter 负责。 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-kafka</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.deep361.myddd</groupId>
+            <artifactId>myddd-test-starter</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- *IT 交给 failsafe（父 POM pluginManagement 已绑定 integration-test + verify）：
+                 surefire 不碰它们，§0.3-7 的"无 Docker 也能 clean verify 全绿"才成立。
+                 本任务没有 *IT，这一段照样必须在此刻写全——Task 40 的两个 IT 靠它才进 failsafe。 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+            </plugin>
+            <!-- CI 的 fail-closed 守卫要求每个 jar 模块自己激活 JaCoCo（父 POM 只在 pluginManagement 声明） -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>

@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.deep361.myddd</groupId>
+        <artifactId>myddd-parent</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <relativePath>../../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>myddd-cache-starter</artifactId>
+
+    <name>myddd-cache-starter</name>
+    <description>缓存适配器 Starter：基于 Spring Cache 规范的 Caffeine L1 与 Redis L2 两级缓存</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.deep361.myddd</groupId>
+            <artifactId>myddd-kernel-common</artifactId>
+        </dependency>
+
+        <!-- 装配面 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-autoconfigure</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-context</artifactId>
+        </dependency>
+
+        <!-- Spring Cache 的 Caffeine 适配（CaffeineCacheManager / CaffeineCache）在这里，
+             Caffeine 本体是它服务的实现手段，两者都必须自己声明（不靠 spring-boot-starter-cache 传递：
+             那个 starter 还会带进 jsr107 与缓存抽象的额外装配，本模块只用其中一类）。 -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-context-support</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
+        </dependency>
+        <!-- 启动期校验用 @PostConstruct，与持久化适配器同一条约定（Boot BOM 管理版本） -->
+        <dependency>
+            <groupId>jakarta.annotation</groupId>
+            <artifactId>jakarta.annotation-api</artifactId>
+        </dependency>
+
+        <!-- L2：RedisCacheManager / RedisCacheConfiguration / RedisConnectionFactory 都出自 spring-data-redis。
+             它是 compile 而不是 optional：缺省形态就是 multi，把"配了 multi 却没有 L2 代码"做成一个静默分支，
+             比多带一个 jar 糟糕得多。连接参数仍归 Boot（spring.data.redis.*），本模块不装配连接。 -->
+        <dependency>
+            <groupId>org.springframework.data</groupId>
+            <artifactId>spring-data-redis</artifactId>
+        </dependency>
+        <!-- RedisSerializer.json() 的实现是 Jackson 3（GenericJacksonJsonRedisSerializer），
+             而 spring-data-redis 把 Jackson 列为 optional：不自己声明就是运行期 NoClassDefFoundError，
+             且迟到了第一次序列化值才炸——离配键名的地方很远。 -->
+        <dependency>
+            <groupId>tools.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+
+        <!-- 测试 -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- Boot 4 把缓存自动装配拆进独立 jar，主代码用 beforeName 按名引用（不产生编译期依赖），
+             但"谁先装配"这条承诺只有在真实把 Boot 的装配类放进上下文时才钉得住，所以测试域要它。 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-cache</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- CacheRedisIT：容器持有类与 @MydddIntegrationTest 基注解来自测试基座（Task 3–6），
+             它是 test 作用域，交付物运行期不需要 Docker/Testcontainers。 -->
+        <dependency>
+            <groupId>org.deep361.myddd</groupId>
+            <artifactId>myddd-test-starter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- @ServiceConnection 的落地工厂 + 真驱动：RedisIT 要一个能连上容器的 LettuceConnectionFactory。 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-data-redis</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.lettuce</groupId>
+            <artifactId>lettuce-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- *IT 交给 failsafe（父 POM pluginManagement 已绑定 integration-test + verify）：
+                 surefire 不碰它们，§0.3-7 的"无 Docker 也能 clean verify 全绿"才成立。 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+            </plugin>
+            <!-- CI 的 fail-closed 守卫要求每个 jar 模块自己激活 JaCoCo（父 POM 只在 pluginManagement 声明） -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>

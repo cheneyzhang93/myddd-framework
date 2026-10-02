@@ -1,0 +1,4 @@
+org.deep361.myddd.persistence.autoconfigure.MydddPersistenceAutoConfiguration
+org.deep361.myddd.persistence.autoconfigure.MydddRoutingDataSourceAutoConfiguration
+org.deep361.myddd.persistence.autoconfigure.MydddOutboxStoreAutoConfiguration
+org.deep361.myddd.persistence.autoconfigure.MydddOutboxDeadLetterAutoConfiguration

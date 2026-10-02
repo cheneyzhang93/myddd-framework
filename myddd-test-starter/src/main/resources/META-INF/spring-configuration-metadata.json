@@ -1,0 +1,28 @@
+{
+  "groups": [
+    {
+      "name": "myddd.test.reset",
+      "type": "org.deep361.myddd.testing.reset.DataResetExtension",
+      "description": "集成测试数据清理（每个用例开始前 TRUNCATE 当前库的业务表）"
+    }
+  ],
+  "properties": [
+    {
+      "name": "myddd.test.reset.enabled",
+      "type": "java.lang.Boolean",
+      "defaultValue": true,
+      "description": "是否启用每个用例开始前的数据清理。"
+    },
+    {
+      "name": "myddd.test.reset.exclude",
+      "type": "java.util.List<java.lang.String>",
+      "description": "全局不清空的表名（大小写不敏感），与 @DataReset 的 exclude 属性合并。"
+    },
+    {
+      "name": "myddd.test.reset.datasource",
+      "type": "java.lang.String",
+      "description": "清理使用的 DataSource bean 名；缺省时要求上下文中唯一或 @Primary 的 DataSource。"
+    }
+  ],
+  "hints": []
+}

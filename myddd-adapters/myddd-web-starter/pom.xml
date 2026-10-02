@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.deep361.myddd</groupId>
+        <artifactId>myddd-parent</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <relativePath>../../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>myddd-web-starter</artifactId>
+
+    <name>myddd-web-starter</name>
+    <description>Web 适配 Starter：统一响应出口与全局异常、traceId 链路边界、Jackson 3 全局 JSON 约定、i18n 文案渲染、springdoc 接线</description>
+
+    <dependencies>
+        <!-- 内核契约：Response / ErrorCode / BizException / TraceContext 全部来自这里 -->
+        <dependency>
+            <groupId>org.deep361.myddd</groupId>
+            <artifactId>myddd-kernel-common</artifactId>
+        </dependency>
+        <!-- 只为一件事：复用 FluentAccessorNamingProvider，使 HTTP JSON 与 Outbox payload 同一份命名规则（见本章模块定位） -->
+        <dependency>
+            <groupId>org.deep361.myddd</groupId>
+            <artifactId>myddd-domain-starter</artifactId>
+        </dependency>
+
+        <!-- Spring 装配面（版本全部由 myddd-dependencies 管理，此处不写版本号） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-autoconfigure</artifactId>
+        </dependency>
+        <!-- Web MVC + Tomcat + Jackson 3 转换器：starter 的职责就是把这些一次带齐 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <!-- @Valid / @Validated 产生的字段级校验异常 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+        <!-- OpenAPI 可选：不在 classpath 上时 MydddWebOpenApiAutoConfiguration 整体不生效 -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- 测试 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- 仅激活：executions/configuration 继承父 POM（LINE+BRANCH 双门槛，阈值 0.60） -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>

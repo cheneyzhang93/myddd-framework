@@ -1,0 +1,6 @@
+{
+  "flow": [
+    { "resource": "order:create", "count": 50, "group": "orders" },
+    { "resource": "order:query", "count": 200 }
+  ]
+}

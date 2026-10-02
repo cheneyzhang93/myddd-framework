@@ -1,0 +1,13 @@
+{
+  "flow": [],
+  "degrade": [
+    {
+      "resource": "payment:capture",
+      "threshold": "error-ratio",
+      "ratio": 50,
+      "minCalls": 5,
+      "windowMs": 1200,
+      "openSeconds": 30
+    }
+  ]
+}

@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.deep361.myddd</groupId>
+        <artifactId>myddd-parent</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>myddd-auth-starter</artifactId>
+
+    <name>myddd-auth-starter</name>
+    <description>鉴权能力 provider 中立的装配壳：@RequiresPermission 切面、启动期声明校验、AuthPort 在场性守卫与 CredentialVerifier 接缝</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.deep361.myddd</groupId>
+            <artifactId>myddd-kernel-common</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.deep361.myddd</groupId>
+            <artifactId>myddd-kernel-port</artifactId>
+        </dependency>
+
+        <!-- 装配面 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-autoconfigure</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-context</artifactId>
+        </dependency>
+        <!-- 启动期校验用 @PostConstruct，与一致性/缓存适配器同一条约定（Boot BOM 管理版本） -->
+        <dependency>
+            <groupId>jakarta.annotation</groupId>
+            <artifactId>jakarta.annotation-api</artifactId>
+        </dependency>
+
+        <!-- @Aspect / @Around 这些注解类型本身来自 AspectJ（Boot BOM 管理版本，实测 1.9.25.1）。
+             只带这一个：代理创建要用的 spring-aop、注解解析要用的 spring-core 已经跟着
+             spring-context 到 classpath 上（consistency 模块同一形状，其 POM 注释记过 dependency:build-classpath
+             的实测读数），显式再声明一遍等于把传递依赖伪装成直接依赖。
+             compile 而非 optional：@RequiresPermission 是交付给业务的注解，
+             "引了壳却没有切面类型"会退化成注解静默不生效——与锁侧同一条理由。
+             刻意不用 spring-boot-starter-aop：本机构件仓里它的最高版本是 3.5.x、没有 Boot 4.x 那一个，
+             而构建一律离线，引它就是把依赖押在"目标环境未必拉得到"的坐标上。 -->
+        <dependency>
+            <groupId>org.aspectj</groupId>
+            <artifactId>aspectjweaver</artifactId>
+        </dependency>
+
+        <!-- 测试 -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- AT14 跨模块断言 PermissionCheckAspect.ASPECT_ORDER < RateLimitAspect.ASPECT_ORDER
+             （数值关系即嵌套关系，判据同 Task 44 的 OR1）；只进测试作用域（D-175）。 -->
+        <dependency>
+            <groupId>org.deep361.myddd</groupId>
+            <artifactId>myddd-resilience-starter</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- 本模块零 IT（壳不碰任何厂商 API，真会话在 provider 模块与 devbox 里），
+                 但按仓内纪律仍激活 failsafe，让"整类干净跳过"在产物里看得见。 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+            </plugin>
+            <!-- CI 的 fail-closed 守卫要求每个 jar 模块自己激活 JaCoCo（父 POM 只在 pluginManagement 声明） -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>

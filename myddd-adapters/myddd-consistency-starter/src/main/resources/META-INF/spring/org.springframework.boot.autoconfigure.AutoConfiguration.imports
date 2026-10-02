@@ -1,0 +1,4 @@
+org.deep361.myddd.consistency.autoconfigure.MydddConsistencyAutoConfiguration
+org.deep361.myddd.consistency.autoconfigure.MydddConsistencyIdempotentAopAutoConfiguration
+org.deep361.myddd.consistency.autoconfigure.MydddConsistencyIdempotentAutoConfiguration
+org.deep361.myddd.consistency.autoconfigure.MydddConsistencyLockAopAutoConfiguration

@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Task 12 遗留承诺的收口夹具：一个**不引 springdoc** 的样例应用，真启动一次 Spring 上下文。
+  为什么必须在打包期做而不是在单元层：`@ConditionalOnClass(name = "…")` 那支要证明的是
+  "springdoc 的类不在 classpath 上时整个 openapi 装配静默退场"，而 web-starter 的测试类路径上
+  springdoc 永远在（它是 optional 依赖，optional 只影响传递、不影响本模块自己）。
+  与 bom-smoke 同形：故意不进 reactor（版本 9.9.9），由 CI 单列一步跑，框架侧构建不受它影响。
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>org.deep361.myddd.smoke</groupId>
+    <artifactId>no-springdoc-smoke</artifactId>
+    <version>9.9.9</version>
+    <packaging>jar</packaging>
+
+    <description>不引 springdoc 的样例应用：验证 web-starter 的 openapi 那支在类缺席时静默退场且其余四支照常装配</description>
+
+    <properties>
+        <maven.compiler.release>21</maven.compiler.release>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.deep361.myddd</groupId>
+                <artifactId>myddd-dependencies</artifactId>
+                <version>1.0.0-SNAPSHOT</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <!-- 刻意不写 springdoc-openapi-starter-webmvc-ui：整份夹具就是为了造出"那个类不存在"的世界 -->
+        <dependency>
+            <groupId>org.deep361.myddd</groupId>
+            <artifactId>myddd-web-starter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- 无父 POM 继承：surefire 必须自己钉版本，否则退回 super-POM 的 2.x 而一条 JUnit 5 用例都不跑（静默空转） -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.6.0</version>
+            </plugin>
+        </plugins>
+    </build>
+</project>

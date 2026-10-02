@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.deep361.myddd</groupId>
+        <artifactId>myddd-parent</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <relativePath>../../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>myddd-consistency-starter</artifactId>
+
+    <name>myddd-consistency-starter</name>
+    <description>一致性适配器 Starter：Redisson 分布式锁（LockPort + @DistributedLock）与 Redis/DB 双实现幂等（IdempotentPort + @Idempotent）</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.deep361.myddd</groupId>
+            <artifactId>myddd-kernel-common</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.deep361.myddd</groupId>
+            <artifactId>myddd-kernel-port</artifactId>
+        </dependency>
+
+        <!-- 装配面 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-autoconfigure</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-context</artifactId>
+        </dependency>
+        <!-- 启动期校验用 @PostConstruct，与缓存/持久化适配器同一条约定（Boot BOM 管理版本） -->
+        <dependency>
+            <groupId>jakarta.annotation</groupId>
+            <artifactId>jakarta.annotation-api</artifactId>
+        </dependency>
+
+        <!-- 连接参数的唯一真源仍是 Boot 的 spring.data.redis.*：我们只消费它解析出来的
+             DataRedisConnectionDetails（含 Testcontainers/@ServiceConnection 与 docker compose 两条覆盖路径），
+             本模块不新增任何连接类配置键。compile 而非 optional：锁的缺省实现就是 Redisson，
+             把它做成"缺了就静默不装配"的分支，比多带一个 jar 糟糕得多。 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-data-redis</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.redisson</groupId>
+            <artifactId>redisson</artifactId>
+        </dependency>
+
+        <!-- @Aspect / @Around 这些注解类型本身来自 AspectJ（Boot BOM 管理版本，实测 1.9.25.1）。
+             只带这一个：代理创建要用的 spring-aop 与 SpEL 用的 spring-expression 已经跟着
+             spring-context 到 classpath 上（dependency:build-classpath 实测两条都在），
+             显式再声明一遍等于把传递依赖伪装成直接依赖。
+             compile 而非 optional：@DistributedLock 是交付给业务的注解，
+             "引了 starter 却没有切面类型"会退化成注解静默不生效。 -->
+        <dependency>
+            <groupId>org.aspectj</groupId>
+            <artifactId>aspectjweaver</artifactId>
+        </dependency>
+
+        <!-- store=db 那一支（Task 27）唯一的 SQL 工具。optional 而非 compile，与锁侧 Redisson 的裁定刻意相反：
+             Redisson 是缺省实现的原料（缺了就没锁），spring-jdbc 只是<b>第二选择</b>的原料——
+             只用 store=redis（缺省）的应用不该被拖进一个 JDBC 依赖，而那一支的装配条件
+             @ConditionalOnClass(JdbcTemplate.class) 正是为"没带就不装"写的。
+             选了 store=db 而没带它的应用不会静默丢端口：切面在第一次调用时报出那句话（Task 26 的
+             AC4 同一条形状），带了它但容器里没有 DataSource 则在启动期就失败（见
+             MydddConsistencyIdempotentAutoConfiguration.DbIdempotentStoreConfiguration）。 -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-jdbc</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- 测试 -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- LockRedisIT：容器持有类与 @MydddIntegrationTest 基注解来自测试基座（Task 3–6），
+             它是 test 作用域，交付物运行期不需要 Docker/Testcontainers。 -->
+        <dependency>
+            <groupId>org.deep361.myddd</groupId>
+            <artifactId>myddd-test-starter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- store=db 那一支的离线验收（Task 27）跑真 SQL、真事务语义，但不跑真 MySQL：
+             H2 以 MODE=MySQL 在内存里建表，整组用例留在 surefire 里，所以 §0.3-7"没有 Docker 也全绿"
+             对这一支同样成立。刻意<b>不</b>依赖 myddd-persistence-starter 去复用交付的那份参考 DDL——
+             一手实测：本模块的 ConsistencyItApplication 带 @EnableAutoConfiguration，把持久化模块的
+             传递依赖（MyBatis-Plus、spring-boot-jdbc）引进测试类路径，会让真 Redis 的 IT 上下文
+             因为"配不出 DataSource"而整个失败，而没有 Docker 时这些 IT 是跳过的，坏掉的路径当场看不出来。
+             列名与列宽的对应改由两侧各自的核对用例钉住（见 JdbcIdempotentStoreTest 的清单用例与
+             myddd-persistence-starter 的 DdlReferenceTest）。 -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- *IT 交给 failsafe（父 POM pluginManagement 已绑定 integration-test + verify）：
+                 surefire 不碰它们，§0.3-7 的"无 Docker 也能 clean verify 全绿"才成立。 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+            </plugin>
+            <!-- CI 的 fail-closed 守卫要求每个 jar 模块自己激活 JaCoCo（父 POM 只在 pluginManagement 声明） -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>

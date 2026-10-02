@@ -1,0 +1,12 @@
+{
+  "flow": [
+    { "resource": "order:create", "count": 50 },
+    { "resource": "order:query", "count": 200 }
+  ],
+  "degrade": [
+    { "resource": "payment:capture", "threshold": "exception-ratio",
+      "ratio": 0.5, "minCalls": 20, "windowMs": 5000, "openSeconds": 10 },
+    { "resource": "inventory:lock", "threshold": "rt",
+      "maxRtMs": 500, "ratio": 0.6, "minCalls": 10, "windowMs": 3000, "openSeconds": 15 }
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "flow": [
+    { "resource": "order:create", "count": 50, "timeoutDuration": "0s" },
+    { "resource": "batch:import", "count": 5 }
+  ],
+  "degrade": []
+}

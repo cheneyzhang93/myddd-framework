@@ -1,0 +1,155 @@
+# myddd 本地开发环境正本。真源是父 POM 的 myddd.devbox.image.*，本文件里的 image 字面量由
+# myddd-devbox/verify-images.sh 与 CI 逐步钉住一致；改 tag 必须两处同改，否则 CI 红。
+# 单一入口：bash myddd-devbox/devbox.sh <命令>（见本目录 README.md）。
+
+name: myddd-devbox
+
+services:
+  mysql:
+    image: mysql:8.4
+    labels:
+      myddd.devbox.image-key: mysql
+    ports:
+      - "${MYSQL_HOST_PORT:-3306}:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?必填：复制 .env.example 为 .env 后填写}
+      # seed/mysql/02-app-user.sh 靠这个变量决定要不要建本地应用账号；compose 不转发 .env，
+      # 所以必须在这里显式注入（实测：不注入时脚本永远走"未设置"分支，填了 .env 也不建账号）。
+      MYDDD_DB_PASSWORD: ${MYDDD_DB_PASSWORD:-}
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+      - --default-time-zone=+08:00
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./seed/mysql:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7.4-alpine
+    labels:
+      myddd.devbox.image-key: redis
+    ports:
+      - "${REDIS_HOST_PORT:-6379}:6379"
+    command: ["redis-server", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  kafka:
+    image: apache/kafka:4.0.0
+    labels:
+      myddd.devbox.image-key: kafka
+    profiles: ["kafka"]
+    ports:
+      - "${KAFKA_HOST_PORT:-9092}:9092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://${KAFKA_ADVERTISED_HOST:-localhost}:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server 127.0.0.1:9092 >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+
+  rocketmq-namesrv:
+    image: apache/rocketmq:5.3.2
+    labels:
+      myddd.devbox.image-key: rocketmq
+    profiles: ["rocketmq"]
+    ports:
+      - "${ROCKETMQ_NAMESRV_HOST_PORT:-9876}:9876"
+    command: sh mqnamesrv
+    healthcheck:
+      # 该镜像里既没有 nc 也没有 ss/netstat（实测 command -v 全部落空），旧的 CMD-SHELL 探针
+      # 恒以 127 退出，namesrv 永远 unhealthy，broker/console 被 depends_on 永久卡在 Created。
+      # 镜像自带 /usr/bin/bash（/bin/sh 是 dash，不支持 /dev/tcp），故显式用 bash 做 TCP 连接探针。
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/9876"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  rocketmq-broker:
+    image: apache/rocketmq:5.3.2
+    labels:
+      myddd.devbox.image-key: rocketmq
+    profiles: ["rocketmq"]
+    depends_on:
+      rocketmq-namesrv:
+        condition: service_healthy
+    ports:
+      - "${ROCKETMQ_BROKER_HOST_PORT:-10911}:10911"
+    environment:
+      NAMESRV_ADDR: rocketmq-namesrv:9876
+      JAVA_OPT_EXT: -Xms512m -Xmx512m -Xmn256m
+    command: sh mqbroker -c /tmp/devbox-broker.conf
+    volumes:
+      - ./config/rocketmq/broker.conf:/tmp/devbox-broker.conf:ro
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/10911"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  rocketmq-console:
+    image: apacherocketmq/rocketmq-dashboard:2.0.0
+    labels:
+      myddd.devbox.image-key: rocketmq-console
+    profiles: ["rocketmq"]
+    depends_on:
+      rocketmq-broker:
+        condition: service_healthy
+    ports:
+      # 镜像 EXPOSE 写的是 8082，实测该 jar 只在容器内 8080 回 200（8082 无响应）——映射跟实测走。
+      - "${ROCKETMQ_CONSOLE_HOST_PORT:-8088}:8080"
+    environment:
+      JAVA_OPTS: -Drocketmq.namesrv.addr=rocketmq-namesrv:9876
+
+  xxljob-admin:
+    image: xuxueli/xxl-job-admin:3.4.2
+    labels:
+      myddd.devbox.image-key: xxljob-admin
+    profiles: ["job"]
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - "${XXLJOB_HOST_PORT:-9099}:8080"
+    environment:
+      # 该镜像（3.4.2）的唯一配置入口是 PARAMS（复数）：entrypoint 实测为
+      # sh -c 'java ${LOG_HOME:+-DLOG_HOME=$LOG_HOME} -jar $JAVA_OPTS /app.jar $PARAMS'。
+      # 写成 PARAM 会被静默忽略（镜像自带 ENV PARAMS=），admin 会退回默认 localhost:3306 数据源。
+      # 值内空格分隔多个 Spring 参数；展开发生在解析之后，URL 里的 & 不会被 shell 当控制符。
+      PARAMS: >-
+        --spring.datasource.url=jdbc:mysql://mysql:3306/xxl_job?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+        --spring.datasource.username=root
+        --spring.datasource.password=${MYSQL_ROOT_PASSWORD}
+        --xxl.job.accessToken=${XXLJOB_ACCESS_TOKEN:-}
+
+  sentinel-dashboard:
+    image: bladex/sentinel-dashboard:1.8.8
+    labels:
+      myddd.devbox.image-key: sentinel-dashboard
+    profiles: ["limiter"]
+    ports:
+      # 该镜像的 ENTRYPOINT 自带 -Dserver.port=8858：控制台与"客户端上报"同一个端口，
+      # 8080 只是镜像 EXPOSE 的历史残留（实测 8080 无响应、8858 回 200）。
+      - "${SENTINEL_HOST_PORT:-8858}:8858"
+
+volumes:
+  mysql-data:

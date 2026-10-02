@@ -1,0 +1,5 @@
+org.deep361.myddd.web.autoconfigure.MydddWebAutoConfiguration
+org.deep361.myddd.web.autoconfigure.MydddWebTraceAutoConfiguration
+org.deep361.myddd.web.autoconfigure.MydddWebJsonAutoConfiguration
+org.deep361.myddd.web.autoconfigure.MydddWebErrorAutoConfiguration
+org.deep361.myddd.web.autoconfigure.MydddWebOpenApiAutoConfiguration

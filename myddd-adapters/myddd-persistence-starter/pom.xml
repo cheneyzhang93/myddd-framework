@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.deep361.myddd</groupId>
+        <artifactId>myddd-parent</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <relativePath>../../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>myddd-persistence-starter</artifactId>
+
+    <name>myddd-persistence-starter</name>
+    <description>持久化适配器 Starter：MyBatis-Plus 拦截器装配、审计填充、Flyway 约定、多数据源路由与 Outbox 的 JDBC 实现</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.deep361.myddd</groupId>
+            <artifactId>myddd-kernel-common</artifactId>
+        </dependency>
+
+        <!-- Outbox 与幂等的契约类型（OutboxRecord / IdempotentPort）在 domain-starter 与 kernel-port 里，
+             本模块的 DDL 约定以它们为唯一真源；Task 19 的 JdbcOutboxStore 同样必然依赖它，此处一次引入。 -->
+        <dependency>
+            <groupId>org.deep361.myddd</groupId>
+            <artifactId>myddd-domain-starter</artifactId>
+        </dependency>
+
+        <!-- 领域事件端口与聚合根基类：本任务的解包对象来自这里（版本由 myddd-dependencies BOM 管理） -->
+        <dependency>
+            <groupId>org.deep361.myddd</groupId>
+            <artifactId>myddd-kernel-ddd</artifactId>
+        </dependency>
+
+        <!-- 装配面 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-autoconfigure</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-context</artifactId>
+        </dependency>
+
+        <!-- 路由数据源的基类与 DataSourceBuilder、以及 JdbcTemplate：虽然经
+             mybatis-plus-spring-boot4-starter → spring-boot-starter-jdbc 已传递可达，但本模块的主代码
+             直接引用它们，必须自己声明。 -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-jdbc</artifactId>
+        </dependency>
+        <!-- TransactionOperations / TransactionTemplate / PlatformTransactionManager：Task 19 的
+             JdbcOutboxStore 直接引用（认领批次必须在事务回调里跑两条语句）。同样经 spring-boot-starter-jdbc
+             传递可达，但"依赖自己直接用的东西"不许靠传递（与 Task 17 的 HikariCP、Task 18 的 kernel-ddd 同一条）。 -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-tx</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-jdbc</artifactId>
+        </dependency>
+        <!-- @Aspect / @Around 的注解与切点表达式解析在这里；Boot 的 AopAutoConfiguration
+             也以 org.aspectj.weaver.Advice 存在为条件开启 AspectJ 自动代理（设计要点 3）。 -->
+        <dependency>
+            <groupId>org.aspectj</groupId>
+            <artifactId>aspectjweaver</artifactId>
+        </dependency>
+
+        <!-- 本能力的实现手段：compile 而非 optional（要点 7 说明 @ConditionalOnClass 为何仍保留） -->
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-spring-boot4-starter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-jsqlparser</artifactId>
+        </dependency>
+
+        <!-- 转换器基座：业务写 @Mapper 时需要 MapStruct 注解；注解随本 starter 传递给业务，
+             但注解处理器不随依赖传递（设计要点 6），业务仍须自行声明 processor path -->
+        <dependency>
+            <groupId>org.mapstruct</groupId>
+            <artifactId>mapstruct</artifactId>
+        </dependency>
+
+        <!-- 测试 -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- driver-class-name 校验需要一个真的 java.sql.Driver 实现类（A7）。 -->
+        <dependency>
+            <groupId>com.mysql</groupId>
+            <artifactId>mysql-connector-j</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- 测试代码直接出现 HikariDataSource 类型（C5 关池断言），不靠 MP starter 传递（要点 10）。 -->
+        <dependency>
+            <groupId>com.zaxxer</groupId>
+            <artifactId>HikariCP</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- Task 20 的真库验收用例：容器持有类与 @MydddIntegrationTest 基注解来自测试基座（Task 3–6）。
+             它是 test 作用域，交付物运行期不需要 Docker/Testcontainers。 -->
+        <dependency>
+            <groupId>org.deep361.myddd</groupId>
+            <artifactId>myddd-test-starter</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- *IT 交给 failsafe（父 POM pluginManagement 已绑定 integration-test + verify），
+                 surefire 不碰它们：§0.3-7 要求无 Docker 的 clean verify 仍然全绿（Task 20 实测）。 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+            </plugin>
+            <!-- 只带 excludes：门槛值与 executions 全部继承父 POM（§0.3-2）。
+                 这条 <excludes> 是 §0.3-3 唯一获准的例外，且只针对生成物（设计要点 7）。 -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <configuration>
+                    <excludes>
+                        <exclude>**/*MapperImpl.class</exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <!-- 实测 maven-compiler-plugin 3.16.0 的 mojo 描述符：annotationProcessorPaths
+                         同时存在于 compile 与 testCompile 两个 mojo（没有独立的
+                         testAnnotationProcessorPaths），故一处配置即覆盖主源与测试源的夹具；
+                         顶层 <path> 必须显式给 version——annotationProcessorPathsUseDepMgmt
+                         只影响传递依赖的版本解析，不会替顶层 path 去 dependencyManagement 取值。
+                         版本走 ${mapstruct.version}，真源仍在根 POM。 -->
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.mapstruct</groupId>
+                            <artifactId>mapstruct-processor</artifactId>
+                            <version>${mapstruct.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

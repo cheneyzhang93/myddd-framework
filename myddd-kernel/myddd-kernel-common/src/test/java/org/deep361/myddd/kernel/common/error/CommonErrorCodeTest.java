@@ -14,7 +14,7 @@ class CommonErrorCodeTest {
     @Test
     void should_follow_code_format_domain_underscore_five_digits() {
         for (CommonErrorCode errorCode : CommonErrorCode.values()) {
-            assertThat(errorCode.code()).matches("[A-Z]+_\\d{5}");
+            assertThat(errorCode.code()).matches(ErrorCode.CODE_PATTERN.pattern());
         }
     }
 

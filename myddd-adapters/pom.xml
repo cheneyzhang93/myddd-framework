@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.deep361.myddd</groupId>
+        <artifactId>myddd-parent</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>myddd-adapters</artifactId>
+    <packaging>pom</packaging>
+
+    <name>myddd-adapters</name>
+    <description>适配器层聚合模块：承载"内核契约的技术实现"（archunit 规则库与 web/persistence/cache/consistency/feign 五个 starter）。聚合 POM 不含代码，故不激活 JaCoCo</description>
+
+    <modules>
+        <!-- 各 starter 在其创建任务中逐个追加（Maven 对不存在的模块目录直接报错） -->
+        <module>myddd-archunit</module>
+        <module>myddd-web-starter</module>
+        <module>myddd-persistence-starter</module>
+        <module>myddd-cache-starter</module>
+        <module>myddd-consistency-starter</module>
+        <module>myddd-feign-starter</module>
+        <module>myddd-mq-starter</module>
+        <module>myddd-resilience-starter</module>
+        <module>myddd-limiter-sentinel-starter</module>
+        <module>myddd-limiter-resilience4j-starter</module>
+        <module>myddd-mq-rocketmq-starter</module>
+        <module>myddd-mq-kafka-starter</module>
+        <module>myddd-job-spring-starter</module>
+        <module>myddd-job-xxljob-starter</module>
+    </modules>
+</project>

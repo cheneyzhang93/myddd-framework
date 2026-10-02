@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.deep361.myddd</groupId>
+        <artifactId>myddd-parent</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>myddd-test-starter</artifactId>
+
+    <name>myddd-test-starter</name>
+    <description>集成测试基座：devbox 同源镜像容器声明 + @MydddIntegrationTest 元注解 + 数据清理扩展。业务工程以 test scope 引入即得全套</description>
+
+    <dependencies>
+        <!-- 以下均为 compile：本模块的 main 代码就是"给业务工程测试代码用的 API"，
+             业务工程把本模块声明为 test scope 后整条依赖链自动降级为 test。 -->
+        <!-- 契约基类的被测对象就是内核端口：main 代码引用内核类型，因此这两个依赖必须是 compile
+             （业务/适配模块把 test-starter 声明成 test 作用域后，整条链自动降级）。
+             版本不写：两个坐标已登记进根 POM 的 dependencyManagement，仓内既有自坐标依赖一律不带 version。 -->
+        <dependency>
+            <groupId>org.deep361.myddd</groupId>
+            <artifactId>myddd-kernel-port</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.deep361.myddd</groupId>
+            <artifactId>myddd-kernel-common</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers-junit-jupiter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers-mysql</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers-kafka</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.redis</groupId>
+            <artifactId>testcontainers-redis</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-testcontainers</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-test</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-test</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-jdbc</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+        </dependency>
+        <!-- @ServiceConnection 的落地工厂：能力在位才生效，故 optional（见"设计要点"） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-jdbc</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-data-redis</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-kafka</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <!-- 本模块自测用 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-jdbc</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.mysql</groupId>
+            <artifactId>mysql-connector-j</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- Task 5 的契约测试用 LauncherFactory 编程式启动整个 IT 类来取证"无 Docker 即跳过"，
+             需要 junit-platform-launcher 在测试编译类路径上（Boot BOM 只导 junit-bom，
+             spring-boot-starter-test 不带 launcher）；缺它 testCompile 直接红，实测。 -->
+        <dependency>
+            <groupId>org.junit.platform</groupId>
+            <artifactId>junit-platform-launcher</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <resources>
+            <!-- 只有镜像清单参与过滤，其余资源原样复制 -->
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>true</filtering>
+                <includes>
+                    <include>myddd-devbox-images.properties</include>
+                </includes>
+            </resource>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>false</filtering>
+                <excludes>
+                    <exclude>myddd-devbox-images.properties</exclude>
+                </excludes>
+            </resource>
+        </resources>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <configuration>
+                    <delimiters>
+                        <delimiter>@</delimiter>
+                    </delimiters>
+                    <useDefaultDelimiters>false</useDefaultDelimiters>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <!-- 把 POM 属性注入测试 JVM：测试据此断言"过滤后的值 == 版本唯一真源"。
+                         没有这条，properties 里手写死 tag 也能过格式校验，漂移无人发现 -->
+                    <systemPropertyVariables>
+                        <myddd.devbox.image.mysql>${myddd.devbox.image.mysql}</myddd.devbox.image.mysql>
+                        <myddd.devbox.image.redis>${myddd.devbox.image.redis}</myddd.devbox.image.redis>
+                        <myddd.devbox.image.kafka>${myddd.devbox.image.kafka}</myddd.devbox.image.kafka>
+                        <myddd.devbox.image.rocketmq>${myddd.devbox.image.rocketmq}</myddd.devbox.image.rocketmq>
+                        <myddd.devbox.image.xxljob-admin>${myddd.devbox.image.xxljob-admin}</myddd.devbox.image.xxljob-admin>
+                    </systemPropertyVariables>
+                </configuration>
+            </plugin>
+            <!-- *IT 交给 failsafe（父 POM pluginManagement 已绑定 integration-test + verify 目标）：
+                 真容器测试不进 surefire 阶段，"无 Docker 也能 clean install"才成立 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+            </plugin>
+            <!-- 仅激活：executions/configuration 全部继承父 POM（门槛值走 ${myddd.jacoco.minimum}）。
+                 唯一一处覆盖豁免：跨厂商等价基类。它的分支只在两个真实 provider 模块的子类里跑
+                 （Task 43 Step 0 第 3 条明文禁止在本模块再养一份进程内假实现来"自证"，那既不选 provider
+                 也是第二个真源），而 JaCoCo 的每模块 bundle 看不见别的模块执行的分支——实测把本类算进来
+                 后 BRANCH 从 0.60 掉到 0.51（本类 373 行未覆盖）。门槛值一条都不动，只把这一个类摘出判定面。 -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>check</id>
+                        <configuration>
+                            <excludes>
+                                <exclude>**/JobProviderEquivalenceTestBase.class</exclude>
+                                <exclude>**/JobProviderEquivalenceTestBase$*.class</exclude>
+                            </excludes>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>
